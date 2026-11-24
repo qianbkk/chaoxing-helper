@@ -36,15 +36,15 @@ t('加载时读回熔断截止时间', src.includes("aiState.ctOffUntil = parseI
 t('模块加载即恢复状态', src.includes('ctLoadState();'), true);
 t('成功后清零失败计数', src.includes('aiState.ctFail = 0;'), true);
 t('成功后持久化状态', /ctSuccess = function \(\) \{[\s\S]{0,200}ctSaveState\(\);/.test(src), true);
-t('提示语说明跨翻章保持', src.includes('该状态跨翻章保持'), true);
+t('提示语说明跨翻章保持', src.includes('熔断状态跨翻章保持'), true);
 t('旧的「本轮」措辞已移除', src.includes("' 次，本轮("), false);
 
 // =============================================================================
 console.log('\n=== 2) 未支持的任务类型不再静默跳过 ===');
 t('打出任务类型', src.includes("'未支持的任务（' + jobType + '）：' + jobName"), true);
-t('日志含任务类型', src.includes("'未支持的任务类型 [' + jobType + ']：'"), true);
+t('日志含任务类型', src.includes("'[运行] 未支持的任务类型 [' + jobType + ']：'"), true);
 t('日志说明脚本无法自动完成', src.includes('脚本无法自动完成（直播要人工看、阅读要人工读）'), true);
-t('日志说明已停止自动翻章', src.includes('已停止自动翻章：请人工处理完这一章后，在「任务配置」点「开始/继续」'), true);
+t('日志说明已停止自动翻章', src.includes('已停止自动翻章：请人工处理完这一章后，点右侧「开始/继续」恢复'), true);
 t('自动调用 pauseCtl.set(true)', src.includes("if (typeof pauseCtl != 'undefined') pauseCtl.set(true);"), true);
 //v1.11：「已跳过」文案只出现在「全程托管」分支里，默认行为仍是停下等人工
 t('跳过文案只在托管分支出现一次', (src.match(/'已跳过（'/g) || []).length, 1);
@@ -53,7 +53,7 @@ t('跳过文案只在托管分支出现一次', (src.match(/'已跳过（'/g) ||
 console.log('\n=== 3) 面板标题 / 元数据 / 说明精简 ===');
 t('@name 改为超星学习通小助手（AI 版）', src.includes('// @name          超星学习通小助手（AI 版）'), true);
 t('@author 标注 qianbkk', src.includes('// @author       qianbkk'), true);
-t('@version 为 1.11.1-AI', src.includes('// @version      1.11.1-AI'), true);
+t('@version 为 1.11.2-AI', src.includes('// @version      1.11.2-AI'), true);
 t('旧的 v1.0 标题已移除', src.includes('学习通小助手v1.0(不能答题填token)'), false);
 t('页面标题不再写死版本号（v1.8 改为运行时动态填）', src.includes('<title>超星学习通小助手（AI 版）</title>'), true);
 t('大标题带 id=unrivalTitle（布局模块靠它定位面板）', src.includes('id="unrivalTitle"'), true);

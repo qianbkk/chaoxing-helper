@@ -34,7 +34,7 @@ chaoxing-helper/
 │   ├── chaoxing-helper.meta.js   ← 只有 ==UserScript== 元数据块
 │   └── README.md
 ├── build/                 ← 中间产物 + 调试变体（gitignore，可随时删）
-├── tests/                 ← 十二套测试，改完必跑
+├── tests/                 ← 十四套测试，改完必跑（共 813 项断言）
 ├── logs/                  ← 本机调试日志（gitignore）
 └── docs/                  ← 结论与取证，入口是 docs/INDEX.md
     ├── INDEX.md                    ← 文档索引（按角色给出阅读顺序）
@@ -68,6 +68,7 @@ chaoxing-helper/
    node tests\workauto-module.test.js ; node tests\debuglog.test.js ; node tests\pause-module.test.js
    node tests\v16-module.test.js ; node tests\debugcmd.test.js ; node tests\v18-module.test.js
    node tests\serve-dist.test.js ; node tests\release-meta.test.js
+   node tests\v110-module.test.js ; node tests\v111-module.test.js ; node tests\v112-module.test.js
    node --check dist\chaoxing-helper.user.js
    ```
 4. **API Key / 题库 Token 绝不写进源码**，也不进任何文档示例。由使用者自己在面板里填，
@@ -101,13 +102,17 @@ chaoxing-helper/
     以后再加 provider，**不要**把 `reasoning_effort` 无条件发给不认这个字段的服务。
 13. **调试功能默认关闭**：`unrivalDbgEnabled` 默认 `'0'`。公开版保留调试代码，
     但装了脚本不会往任何地址发请求。改这个默认值前先想清楚是不是想给所有人开。
-14. **面板区块顺序是约定，不要随手调**（v1.10.0 起）：
-    任务配置（含运行控制）→ 答题设置·题库 │ 答题设置·AI 接口（左右并排）
-    → 章节测验/作业自动作答 → 运行日志 → 任务列表 → 附加功能 → 调试模式（最下面）。
+14. **面板是左右两栏，区块顺序是约定，不要随手调**（v1.10.0 起，v1.11.2 改成两栏）：
+    - 左栏（`.unrival-maincol`）自上而下：
+      任务配置 → 答题设置·题库 │ 答题设置·AI 接口（左右并排）
+      → 章节测验/作业自动作答 → 运行日志 → 任务列表 → 附加功能 → 调试模式（最下面）；
+    - **右栏（`.unrival-sidecol`）= 运行控制**：独立面板（`#runCtlPanel`，蓝色标题栏），
+      只放「开始/继续」（绿色 **大号**主按钮 `btn-lg btn-block`）与「暂停」（红色 **小号** `btn-sm btn-block`）。
+      桌面端 sticky，窄屏 `order:-1` 顶到最上面；
     - 调试相关的东西永远在最下面；运行日志和任务列表是主要部分，不塞到末尾；
     - 题库与 AI 的设置必须**分成两块、各存各的**（`saveCtButton` / `saveAiButton`），
       别再合并成一个「保存AI设置」；
-    - 小块用 `.unrival-grid` 左右并排，主容器是 `col-md-8`；
+    - 小块用 `.unrival-grid` 左右并排，主容器是 `col-md-10`；
     - 改面板 HTML 时，**整块替换**（起始标记 → 结束标记），
       旧的「任务列表 / 运行日志」面板必须一并被换掉，否则会留下重复 id。
 15. **运行日志按标签页会话保存**（v1.10.0 起）：日志存 `sessionStorage`，
@@ -119,8 +124,17 @@ chaoxing-helper/
     相关说明与边界要在文档里写清楚。
 17. **阅读助手默认关闭**：`unrivalReadAssist` 默认 `'0'`。
     它**只滚动、不发任何请求** —— 超星按真实浏览时长判定阅读任务完成，
-    脚本不能加速、不能秒过。`tests/v111-module.test.js` 有一条断言专门守着
-    「阅读模块里不得出现 `GM_xmlhttpRequest`」，改这块时别把这条线弄丢。
+    脚本不能加速、不能秒过。`tests/v111-module.test.js` 与 `tests/v112-module.test.js`
+    各有一条断言专门守着「阅读模块里不得出现 `GM_xmlhttpRequest`」，改这块时别把这条线弄丢。
+18. **运行日志有格式规范**（v1.11.2 起）：
+    - 行格式固定 `[时间] [标签] 句子`；标签集固定 12 个（`logSpec.TAGS`）：
+      视频 / 文档 / 测验 / 答题 / 题库 / AI / 阅读 / 托管 / 翻章 / 运行 / 设置 / 系统；
+    - 句式是「动作 + 对象 + 结果（+ 原因）」，标点用中文全角；
+    - **改日志文案要在 `src/patches/patch-vX.Y.Z.ps1` 里逐条改写**（带命中次数断言），
+      不要靠运行时的关键词自动分类 —— 那类规则既不可测也不可审；
+    - 开发自检类信息（页面就绪、面板整理、调试命令回显）只走调试通道，不进用户日志；
+    - 同一句话在源码里只留一份；紧挨着重复的运行时消息由 `loghist` 合并成 `（×N）`；
+    - `tests/v112-module.test.js` 会逐条扫描发布件，断言每条日志消息都带合法标签前缀。
 
 ## 4. 本机调试通道（维护者自用）
 

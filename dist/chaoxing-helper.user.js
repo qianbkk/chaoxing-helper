@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          超星学习通小助手（AI 版）
 // @namespace    unrival
-// @version      1.11.1-AI
+// @version      1.11.2-AI
 // @description  超星学习通小助手（AI 版）：自动刷视频与文档、自动做章节测验/作业。章节测验先用题库作答，查不到或被限流时自动降级到 AI（OpenAI 兼容接口）；超星的加密字体自动解密，题干与选项都能正常识别。题库 Token、正确率门槛、翻章模式、AI 接口地址与密钥都可在面板配置。
 // @author       qianbkk
 // @run-at       document-end
@@ -78,7 +78,7 @@
                 var legacy = String(GM_getValue(this.LEGACY_KEY, '1'));
                 var real = '1';
                 if (legacy === '2') {
-                    this._note = '翻章模式存储已修复：旧版本的暂停功能把模式误写成「不跳转」，已恢复为「遍历」。若确实需要不跳转，在「AI答题设置」里改回即可（现在改了就存得住）。';
+                    this._note = '[设置] 翻章模式存储已修复：旧版本的暂停功能把模式误写成「不跳转」，已恢复为「遍历」。若确实需要不跳转，在「答题设置」里改回即可（现在改了就存得住）。';
                 }
                 GM_setValue(this.REAL_KEY, real);
                 try { GM_setValue(this.LEGACY_KEY, real); } catch (e2) { }
@@ -257,11 +257,11 @@
     var ctFail = function (reason) {
         aiState.ctFail++;
         ctSaveState();
-        aiLog('题库查题失败(' + reason + ')，连续 ' + aiState.ctFail + '/' + ctFailLimit + ' 次', 'orange');
+        aiLog('[题库] 查题失败：' + reason + '，已连续失败 ' + aiState.ctFail + '/' + ctFailLimit + ' 次', 'orange');
         if (aiState.ctFail >= ctFailLimit && !ctDisabled()) {
             aiState.ctOffUntil = Date.now() + ctFailCooldown;
             ctSaveState();
-            aiLog('题库连续失败 ' + aiState.ctFail + ' 次，接下来 ' + Math.round(ctFailCooldown / 60000) + ' 分钟内不再请求题库，直接交给AI（该状态跨翻章保持）', 'red');
+            aiLog('[题库] 连续失败 ' + aiState.ctFail + ' 次，已熔断：接下来 ' + Math.round(ctFailCooldown / 60000) + ' 分钟内不再请求题库，直接改用 AI（熔断状态跨翻章保持）', 'red');
         }
     }
     var ctSuccess = function () {
@@ -495,14 +495,14 @@
         aiAsk(qu, function (idxs, err) {
             if (!idxs || idxs.length == 0) {
                 aiState.aiFail++;
-                aiLog('AI答题失败：' + (err || '未知原因') + ' ｜题目：' + qu['question'], 'red');
+                aiLog('[AI] 答题失败：' + (err || '未知原因') + ' ｜题目：' + qu['question'], 'red');
                 randomFallback(qu);
                 if (!alreadyCounted) busyThread -= 1;
                 return;
             }
             aiState.aiOk++;
             var ok = applyByIndex(qu, idxs);
-            aiLog('AI答题：' + qu['question'] + ' → 选 [' + idxs.join(',') + ']' + (ok ? '' : '（选项点击失败）'), 'green');
+            aiLog('[AI] 作答完成：' + qu['question'] + ' → 选 [' + idxs.join(',') + ']' + (ok ? '' : '（选项点击失败）'), 'green');
             if (!alreadyCounted) busyThread -= 1;
         });
     }
@@ -692,7 +692,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 }
                 return false;
             }
-            aiLog('字体解密完成，已还原 ' + Object.keys(this.charMap).length + ' 个字符', 'green');
+            aiLog('[系统] 字体解密完成，已还原 ' + Object.keys(this.charMap).length + ' 个字符', 'green');
             return true;
         },
         getCharMap: function () {
@@ -917,7 +917,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                             return;
                         }
                         if (obj && obj.code === -2) {
-                            aiLog('题库触发并发限制，本题改用 AI', 'orange');
+                            aiLog('[题库] 触发并发限制，本题改用 AI', 'orange');
                         }
                         cb(null);
                     },
@@ -956,17 +956,17 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         var idxs = self.matchAnswer(ans, q.options);
                         if (idxs.length) {
                             self.clickOptions(q, idxs);
-                            aiLog('题库命中：' + q.question.slice(0, 24) + ' → ' + idxs.map(function (i) {
+                            aiLog('[题库] 命中：' + q.question.slice(0, 24) + ' → ' + idxs.map(function (i) {
                                 return (i + 1) + '.' + q.options[i].text;
                             }).join(' / '), 'green');
                             cb(true, 'ct');
                             return;
                         }
-                        aiLog('题库答案无法匹配选项：' + ans.slice(0, 30), 'orange');
+                        aiLog('[题库] 答案无法匹配选项：' + ans.slice(0, 30), 'orange');
                     }
                     self.aiAnswer(q, function (ok, src) {
                         if (ok) {
-                            aiLog('AI作答：' + q.question.slice(0, 24) + ' → ' + src, 'green');
+                            aiLog('[AI] 作答：' + q.question.slice(0, 24) + ' → ' + src, 'green');
                             cb(true, 'ai');
                             return;
                         }
@@ -975,7 +975,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         for (var i = 0; i < q.options.length; i++) all.push(i);
                         var pick = (q.type === '多选题') ? all : [0];
                         self.clickOptions(q, pick);
-                        aiLog('题库与AI都没结果，随机兜底：' + q.question.slice(0, 24), 'orange');
+                        aiLog('[答题] 题库与 AI 都没结果，随机兜底：' + q.question.slice(0, 24), 'orange');
                         cb(true, 'random');
                     });
                 });
@@ -986,15 +986,15 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
         finish: function (list, realCount) {
             //v1.5：暂停时不自动提交
             if (typeof pauseCtl != 'undefined' && pauseCtl.isPaused()) {
-                aiLog('已暂停：不自动提交', 'orange');
+                aiLog('[运行] 已暂停：本次不自动提交', 'orange');
                 return;
             }
             if (!this.cfg.submit) {
-                aiLog('已作答 ' + realCount + '/' + list.length + ' 题（未开启自动提交）', 'orange');
+                aiLog('[答题] 已作答 ' + realCount + '/' + list.length + ' 题（未开启自动提交）', 'orange');
                 return;
             }
             if (realCount < list.length) {
-                aiLog('有 ' + (list.length - realCount) + ' 题只做了随机兜底，为避免交错答案，本次不自动提交', 'orange');
+                aiLog('[答题] 有 ' + (list.length - realCount) + ' 题只做了随机兜底，为避免交错答案，本次不自动提交', 'orange');
                 return;
             }
             var btn = null;
@@ -1002,17 +1002,17 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 btn = _d.querySelector('a.Btn_blue_1.workBtnIndex') || _d.querySelector('.Btn_blue_1');
             } catch (e) { }
             if (!btn) {
-                aiLog('未找到提交按钮，请手动提交', 'orange');
+                aiLog('[测验] 未找到提交按钮，请手动提交', 'orange');
                 return;
             }
-            aiLog('全部题目已作答，正在提交…', 'green');
+            aiLog('[测验] 全部题目已作答，正在提交…', 'green');
             var self = this;
             setTimeout(function () {
                 try {
                     btn.click();
-                    aiLog('已点击提交', 'green');
+                    aiLog('[测验] 已点击提交', 'green');
                 } catch (e) {
-                    aiLog('提交失败：' + e.message, 'red');
+                    aiLog('[测验] 提交失败：' + e.message, 'red');
                 }
             }, 600);
         },
@@ -1022,16 +1022,16 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             cxDecrypt.decrypt(0);
             var list = this.collect();
             if (!list.length) {
-                aiLog('当前页面没有识别到可自动作答的题目', 'orange');
+                aiLog('[答题] 当前页面没有识别到可自动作答的题目', 'orange');
                 return;
             }
-            aiLog('识别到 ' + list.length + ' 道题，开始自动作答', 'green');
+            aiLog('[答题] 识别到 ' + list.length + ' 道题，开始自动作答', 'green');
             var i = 0;
             var realCount = 0;
             var step = function () {
                 //v1.5：暂停时停下，不再往下作答（已作答的题目保留）
                 if (typeof pauseCtl != 'undefined' && pauseCtl.isPaused()) {
-                    aiLog('已暂停：停止自动作答（已作答的题目保留）', 'orange');
+                    aiLog('[运行] 已暂停：已停止自动作答（已作答的题目保留）', 'orange');
                     return;
                 }
                 if (i >= list.length) {
@@ -1052,7 +1052,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 if (!this.cfg.enable) return;
                 //v1.5：暂停时连开都不开
                 if (typeof pauseCtl != 'undefined' && pauseCtl.isPaused()) {
-                    aiLog('已暂停：本次不自动作答', 'orange');
+                    aiLog('[运行] 已暂停：本次不自动作答', 'orange');
                     return;
                 }
                 if (!this.matchPage(_l.pathname)) return;
@@ -1071,7 +1071,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     if (tries < 10) {
                         setTimeout(wait, 1000);
                     } else {
-                        aiLog('等待超时：页面里始终没有找到题目', 'orange');
+                        aiLog('[答题] 等待超时：页面里始终没有找到题目', 'orange');
                     }
                 };
                 setTimeout(wait, 1000);
@@ -1351,16 +1351,16 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
         answerExamPage: function (kind) {
             var self = this;
             this._examPages = (this._examPages || 0) + 1;
-            if (this._examPages > 100) { aiLog('考试端：翻页次数超过上限，停止', 'orange'); return; }
+            if (this._examPages > 100) { aiLog('[答题] 考试端：翻页次数超过上限，已停止', 'orange'); return; }
             var qs = this.collectExamQuestions(kind);
-            if (!qs.length) { aiLog('考试端：未识别到题目（' + kind + '），页面结构可能不同', 'orange'); return; }
-            aiLog('考试端：识别到 ' + qs.length + ' 道题（' + kind + '）', 'green');
+            if (!qs.length) { aiLog('[答题] 考试端：未识别到题目（' + kind + '），页面结构可能不同', 'orange'); return; }
+            aiLog('[答题] 考试端：识别到 ' + qs.length + ' 道题（' + kind + '）', 'green');
             var i = 0;
             var step = function () {
                 if (i >= qs.length) { self.examNextPage(kind); return; }
                 var q = qs[i++];
                 self.answerExamQuestion(q, function (ok, src) {
-                    aiLog('考试端：' + (ok ? ('已作答(' + src + ') ') : '兜底作答 ') + String(q.question).substring(0, 30), ok ? 'green' : 'orange');
+                    aiLog('[答题] 考试端：' + (ok ? ('已作答(' + src + ') ') : '兜底作答 ') + String(q.question).substring(0, 30), ok ? 'green' : 'orange');
                     setTimeout(step, 1200);
                 });
             };
@@ -1377,10 +1377,10 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     if (t.indexOf('下一题') >= 0) cands.push(els[i]);
                 }
             } catch (e) { }
-            if (cands.length !== 1) { aiLog('考试端：未找到唯一的「下一题」按钮，停止自动翻页', 'orange'); return; }
+            if (cands.length !== 1) { aiLog('[答题] 考试端：未找到唯一的「下一题」按钮，已停止自动翻页', 'orange'); return; }
             try {
                 cands[0].click();
-                aiLog('考试端：已翻到下一题', 'green');
+                aiLog('[答题] 考试端：已翻到下一题', 'green');
                 setTimeout(function () { self.answerExamPage(kind); }, 2500);
             } catch (e) { }
         },
@@ -1478,7 +1478,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     self.elapsed += 1;
                     GM_setValue('unrivalExKeepSec', String(self.elapsed));
                     if (self.elapsed % 60 === 0) {
-                        aiLog('任务页保活：已停留 ' + Math.floor(self.elapsed / 60) + ' 分钟（本地计时，超星侧是否计入未验证）', 'blue');
+                        aiLog('[运行] 任务页保活：已停留 ' + Math.floor(self.elapsed / 60) + ' 分钟（本地计时，超星侧是否计入未验证）', 'blue');
                     }
                 }, 1000);
             },
@@ -1516,7 +1516,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             try {
                 if (this.cfg.paste) {
                     this.paste.init();
-                    aiLog('附加功能：已启用强制复制粘贴', 'green');
+                    aiLog('[设置] 附加功能：已启用强制复制粘贴', 'green');
                 }
                 if (this.cfg.exam) {
                     var kind = this.matchExamPage(_l.pathname, _l.href);
@@ -1887,30 +1887,80 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
         console.log(e);
     }
     //==================== v1.5 调试日志模块结束 ====================
-    //==================== v1.10 运行日志（按标签页会话）开始 ====================
-    // 【v1.10 相比 v1.8.1 改了什么】
-    //   日志的「存活范围」从「浏览器永久存储」改成「当前标签页的会话」：
-    //     · 自动切下一节 / 手动点别的章节 = 同一个标签页里换页  → 日志保留；
-    //     · 关掉标签页再重新打开这个页面 = 新的标签页          → 新的日志。
-    //   实现用 sessionStorage —— 它的语义正好就是「同一标签页内换页/刷新还在，
-    //   关掉标签页就没了」；而 v1.8.1 用的 GM 存储是永久的，关浏览器再开也还在。
+    //==================== v1.11.2 日志规范开始 ====================
+    // 【v1.11.2 给「运行日志」立的规矩】
+    //   ① 行格式统一为：  [时间] [标签] 句子
+    //      标签让用户一眼看出这条属于哪一类（视频 / 文档 / 测验 / 阅读 / 托管 / 运行 …）。
+    //   ② 标签集固定 12 个，见 TAGS；不在集合里的不算标签。
+    //   ③ 句式统一为「动作 + 对象 + 结果（+ 原因）」，标点用中文全角，不用感叹号叠用。
+    //   ④ 开发自检类信息（页面就绪、面板整理、调试命令回显）只走调试通道，不进用户日志。
+    //   ⑤ 连续重复的同一条消息合并计数（显示成「原文（×N）」），不刷屏。
     //
-    // 【为什么换得掉：写日志的只有同源的两处】
-    //   面板只出现在超星的章节列表页（knowledge/cards），写日志的地方只有：
-    //     ① 章节列表页本身；
-    //     ② 章节测验 iframe —— 它的 src 用的是当前页的 host（_p + '//' + _h + ...），
-    //        与章节列表页**同源**，同源同标签页共享同一份 sessionStorage，
-    //        所以两边写的日志能合到一起（父子页并发写仍然走合并写入，见下）。
-    //   考试端/作业端是别的页面（别的源），那边的日志走的是 top.unrivalWorkInfo，
-    //   从来不写进这份历史 —— 所以换存储不会丢任何本来能看到的日志。
+    // 【为什么分成「源码改写」和「运行时兜底」两半】
+    //   · 绝大多数文案是在 src/patches/patch-v1.11.2.ps1 里**逐条改写**的：
+    //     改写点都有命中次数断言，能审、能测、能回溯。
+    //   · 这个模块只负责「改不到的那部分」：
+    //       · 动态拼出来的消息（题目文本、超星原文告警等）补标签；
+    //       · 空白折叠、空消息丢弃；
+    //       · 万一有漏网的无标签消息，兜底补一个 [系统] 标签，不让格式乱掉。
     //
-    // 【兜底】
-    //   某些浏览器/隐私模式下 sessionStorage 可能不可用 —— 这时退回 GM 存储，
-    //   行为退回 v1.8.1（永久保留），保证日志功能本身不挂。
+    // 【不做什么】
+    //   · 不做「关键词自动分类」—— 那类规则既不可测也不可审，漏一条就悄悄变形；
+    //   · 不改日志的存储语义（仍是按标签页会话，见 loghist.v1.11.2.js）。
+    var logSpec = {
+        //标签集：用户日志里每一行的标签只能是这 12 个之一
+        TAGS: ['视频', '文档', '测验', '答题', '题库', 'AI', '阅读', '托管', '翻章', '运行', '设置', '系统'],
+        //行首标签的写法：[标签] 后面跟一个空格
+        TAG_RE: /^\[([^\]\s]{1,8})\]\s*/,
+        //清理：换行/制表符/不换行空格压成空格，连续空格压成一个，首尾去空白
+        clean: function (text) {
+            var s = (text == null ? '' : String(text));
+            s = s.replace(/[\r\n\t]+/g, ' ');
+            s = s.replace(/\u00a0/g, ' ');
+            s = s.replace(/ {2,}/g, ' ');
+            return s.replace(/^\s+|\s+$/g, '');
+        },
+        //是不是已经带了合法标签
+        hasTag: function (text) {
+            var m = this.TAG_RE.exec(this.clean(text));
+            return !!(m && this.TAGS.indexOf(m[1]) >= 0);
+        },
+        //补标签（已经有合法标签就原样返回；标签不在集合里算「系统」）
+        tag: function (text, tag) {
+            var s = this.clean(text);
+            if (!s) return '';
+            if (this.hasTag(s)) return s;
+            var t = (tag && this.TAGS.indexOf(tag) >= 0) ? tag : '系统';
+            return '[' + t + '] ' + s;
+        },
+        //兜底规范化：没标签的补 [系统]
+        normalize: function (text) {
+            var s = this.clean(text);
+            if (!s) return '';
+            if (this.hasTag(s)) return s;
+            return '[系统] ' + s;
+        }
+    };
+    //==================== v1.11.2 日志规范结束 ====================
+    //==================== v1.11.2 运行日志（按标签页会话）开始 ====================
+    // 【v1.11.2 相比 v1.10 改了什么】
+    //   存储语义一个字没动（还是「按标签页会话」：翻章保留、关标签页清空），
+    //   改的是**写进去之前**和**画出来之后**这两头：
+    //     ① 写进去之前：统一规范化（logSpec.normalize）——
+    //        空白折叠、空消息丢弃、没标签的补 [系统]；
+    //     ② 写进去的时候：连续重复的同一条消息**合并计数**，
+    //        只加一条不再加行，渲染成「原文（×N）」，不刷屏；
+    //     ③ 合并写入（父子页并发写）时按「时间+颜色+正文」去重，
+    //        计数取大的那个，避免并发把次数写乱。
     //
-    // 【顺带清理】
-    //   切到会话存储后，v1.8.1 留在 GM 存储里的那份历史是「永远看不到的旧数据」，
-    //   首次进入会话模式时直接删掉，免得白占空间。
+    // 【为什么合并计数只认「连续」的两条】
+    //   隔了几条之后再出现同一句话，多半是新的一次事件（比如换了一章又遇到同样的提示），
+    //   那是两件事，不该并成一条。只有紧挨着的重复才是刷屏。
+    //
+    // 【v1.10 保留的语义（一个字没改）】
+    //   · 日志的「存活范围」：同一标签页里换页/翻章还在，关掉标签页就没了；
+    //   · 用 sessionStorage，隐私模式下不可用时退回 GM 存储（永久保留），日志功能不挂；
+    //   · 面板上最新的那条排在最上面（倒序渲染）。
     var logHist = {
         KEY: 'unrivalLogHistory',
         MAX: 500,
@@ -1972,8 +2022,13 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     var push = function (l) {
                         if (!l || typeof l != 'object') return;
                         var k = (l.t || '') + '|' + (l.c || '') + '|' + (l.s || '');
-                        if (seen[k]) return;
-                        seen[k] = 1;
+                        if (seen[k]) {
+                            //同一条被两个来源各写了一份：计数取大的那个
+                            var ex = seen[k];
+                            if ((l.n || 1) > (ex.n || 1)) ex.n = l.n;
+                            return;
+                        }
+                        seen[k] = l;
                         merged.push(l);
                     };
                     var stored = [];
@@ -2014,13 +2069,31 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
         },
+        //写进历史之前统一规范化（标签、空白、空消息）
+        normalize: function (str) {
+            try {
+                if (typeof logSpec != 'undefined' && logSpec && logSpec.normalize) return logSpec.normalize(str);
+            } catch (e) { }
+            return String(str == null ? '' : str);
+        },
         push: function (str, color) {
             try {
                 this.load();
+                var text = this.normalize(str);
+                if (!text) return;                 // 空消息直接丢掉，不占一行
+                var last = this._lines.length ? this._lines[this._lines.length - 1] : null;
+                if (last && last.s === text) {
+                    //紧挨着的同一句：只加计数，不再加行
+                    last.n = (last.n || 1) + 1;
+                    while (this._lines.length > this.MAX) this._lines.shift();
+                    this.save();
+                    return;
+                }
                 this._lines.push({
                     t: this.stamp(),
                     c: String(color || 'black'),
-                    s: String(str == null ? '' : str)
+                    s: text,
+                    n: 1
                 });
                 while (this._lines.length > this.MAX) this._lines.shift();
                 this.save();
@@ -2034,7 +2107,9 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 //倒序渲染 —— 最上面一条永远是最新的
                 for (var i = this._lines.length - 1; i >= 0; i--) {
                     var l = this._lines[i];
-                    html += "<span style='color: " + l.c + "'>[" + l.t + "] " + this.escape(l.s) + '</span><br>';
+                    //重复过的消息后面带一个计数
+                    var cnt = (l.n && l.n > 1) ? ('（×' + l.n + '）') : '';
+                    html += "<span style='color: " + l.c + "'>[" + l.t + "] " + this.escape(l.s) + cnt + '</span><br>';
                 }
                 el.innerHTML = html;
                 el.scrollTop = 0;   // 停在顶部，最新的一条一直可见
@@ -2089,7 +2164,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 var self = this;
                 btn.onclick = function () {
                     self.clear();
-                    try { logs.addLog('运行日志已清空', 'gray'); } catch (e) { }
+                    try { logs.addLog('[系统] 运行日志已清空', 'gray'); } catch (e) { }
                 };
                 return true;
             } catch (e) {
@@ -2114,8 +2189,8 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
     } catch (e) {
         console.log(e);
     }
-    //==================== v1.10 运行日志（按标签页会话）结束 ====================
-    //==================== v1.11 全程托管模式开始 ====================
+    //==================== v1.11.2 运行日志（按标签页会话）结束 ====================
+    //==================== v1.11.2 全程托管模式开始 ====================
     // 【要解决的问题】
     //   原脚本遇到「不支持的任务类型」（直播/阅读等）会**主动停下等人**：
     //   v1.6 的设计是「绝不能悄悄把还有任务点的章节跳过去」，
@@ -2137,6 +2212,10 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
     //     这时脚本会持续重试并写日志，需要人工把那一节的任务点补上才能继续往下。
     //   · 直播类任务即使跳过，也要超星那边自己到期才算完成，脚本替代不了。
     //   · 默认关闭（unrivalAutoRun = '0'），不改变原来的行为。
+    //
+    // 【v1.11.2 改了什么】
+    //   只改了日志文案：按 v1.11.2 的日志规范统一加 [托管] 标签、统一句式。
+    //   行为一个字没动。
     var autoRun = {
         KEY: 'unrivalAutoRun',
         INTERVAL: 20000,      // 重试间隔：20 秒
@@ -2186,7 +2265,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 var gap = (this._tries > 5) ? this.LOG_EVERY_LATE : this.LOG_EVERY;
                 if (now - this._lastLog < gap) return;
                 this._lastLog = now;
-                var msg = '全程托管：这一节的任务已做完，但超星没有跳到下一节（第 ' + this._tries + ' 次重试）';
+                var msg = '[托管] 这一节的任务已做完，但超星没有跳到下一节（第 ' + this._tries + ' 次重试）';
                 if (this._tries > 5) {
                     msg += '。可能已经到最后一节，也可能上一节还有没完成的任务点（脚本做不了的那种），需要人工补上才会继续';
                 }
@@ -2210,32 +2289,45 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
     } catch (e) {
         console.log(e);
     }
-    //==================== v1.11 全程托管模式结束 ====================
-    //==================== v1.11.1 阅读助手开始 ====================
-    // 【来由】
-    //   参考实现：上游 GF530068 v5.5.9.9.6 的「阅读助手」模块 —— 这条技术线上唯一成型的阅读实现。
-    //   （桌面那份 v4.0 没有阅读能力；本模块按参考实现重写，接到本项目的骨架上。）
+    //==================== v1.11.2 全程托管模式结束 ====================
+    //==================== v1.11.2 阅读助手开始 ====================
+    // 【v1.11.2 相比 v1.11.1 改了什么】
+    //   ① 每段停留秒数的**默认值从 1 秒改成 10 秒**；
+    //      老用户如果还停在 v1.11.1 的默认值 1 秒上，升级时自动改成 10 秒，
+    //      自己设过别的值的一律不动（见 migrate）。
+    //   ② **把整篇读完**：超星的正文页是往下滚才加载出后面的内容，
+    //      v1.11.1 只在开头收集一次元素，读完那一批就结束 ——
+    //      后半篇根本没读到。现在读完一批之后会去页面底部触发懒加载，
+    //      等新内容出来就接着读，**一直读到再也加载不出新内容为止**。
+    //   ③ 日志按 v1.11.2 的规范统一成「[阅读] …」。
     //
     // 【它做什么】
     //   · 在「阅读正文页」（/ztnodedetailcontroller/visitnodedetail）：
-    //     收集正文元素（段落/标题/图/视频），逐个滚过去，直到读完；
-    //   · 在「阅读任务目录页」（/mooc-ans/zt/portal/ 等）：
-    //     自动找到目录里的阅读入口并点进去；
+    //     收集正文元素（段落/标题/图/视频），逐个滚过去，直到读完（含懒加载出来的）；
+    //   · 在「阅读任务目录页」（/mooc-ans/zt/portal/ 等）：自动找到目录里的阅读入口并点进去；
     //   · 读完：写日志；页面里有「下一章」按钮时点它（与参考实现一致）。
     //
     // 【重要边界 —— 写清楚，别让人误以为能秒过】
     //   全程**不发任何完成上报请求**（与参考实现一致）：
     //   超星是按**真实浏览时长**判定阅读任务完成的，脚本只能把内容真的滚过去 ——
     //   读多久就是多久，不能加速、不能秒过。
+    //   任务点已经亮过（这一节之前读过了）也一样照读 —— 这是用户要的效果：
+    //   按面板上的「每段 N 秒」把整篇再滚一遍，把阅读时长拉满。
     //
     // 【默认关闭】
     //   开关 unrivalReadAssist（面板「附加功能」里），默认 '0'。
     //   关掉开关会立刻停止正在进行的滚动（每一步都会检查开关）。
     var readAssist = {
         KEY: 'unrivalReadAssist',
-        SPEED_KEY: 'unrivalReadSpeed',     // 每个段落停留多少秒（默认 1.0）
+        SPEED_KEY: 'unrivalReadSpeed',     // 每个段落停留多少秒（默认 10）
+        SPEED_VER_KEY: 'unrivalReadSpeedVer', // 迁移标记：只为一次性把旧默认值改成 10
         MODE_KEY: 'unrivalReadMode',       // 'paragraph'（逐段，默认）| 'page'（整页）
-        DEFAULT_SPEED: 1.0,
+        OLD_DEFAULT_SPEED: 1,              // v1.11.1 的默认值
+        DEFAULT_SPEED: 10,                 // v1.11.2 起：默认每段 10 秒
+        MIN_SPEED: 0.3,
+        MAX_SPEED: 10,
+        EXTEND_TRIES: 6,                    // 最多连续尝试 6 次拉新内容（每次等 1.5 秒）
+        EXTEND_WAIT: 1500,                  // 每次等待懒加载的时间（毫秒）
         //正文容器候选（取第一个「里面确实有段落」的）
         CONTENT_ROOT_SELECTORS: ['.read_content', '.article', '.content', '#content', '.node-content', '.chapter-content', '.ans-cc', 'main'],
         //这些区域里的东西不算正文（导航栏、悬浮控件等）
@@ -2246,7 +2338,9 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
         //目录页里的阅读入口候选
         LINK_SELECTORS: 'a[href*="/ztnodedetailcontroller/visitnodedetail"],.catalog_detail a,.chapter_item a,.nodeItem a,.posCatalog_name a',
         _elements: [],
+        _seen: [],
         _index: 0,
+        _extendTries: 0,
         _timer: null,
         _jumpTimer: null,
         _observer: null,
@@ -2255,12 +2349,27 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
         enabled: function () {
             try { return GM_getValue(this.KEY, '0') == '1'; } catch (e) { return false; }
         },
+        //一次性迁移：只有「还停在 v1.11.1 的默认值 1 秒」时才改成 10 秒，
+        //用户自己设过的值（5 秒、0.5 秒…）一律不动。
+        migrate: function () {
+            try {
+                if (GM_getValue(this.SPEED_VER_KEY, '') === '1.11.2') return false;
+                var raw = GM_getValue(this.SPEED_KEY, '');
+                var v = parseFloat(raw);
+                if (!raw || isNaN(v) || v === this.OLD_DEFAULT_SPEED) {
+                    GM_setValue(this.SPEED_KEY, String(this.DEFAULT_SPEED));
+                }
+                GM_setValue(this.SPEED_VER_KEY, '1.11.2');
+                return true;
+            } catch (e) { return false; }
+        },
         speed: function () {
             try {
+                this.migrate();
                 var v = parseFloat(GM_getValue(this.SPEED_KEY, String(this.DEFAULT_SPEED)));
                 if (isNaN(v) || v <= 0) v = this.DEFAULT_SPEED;
-                if (v < 0.3) v = 0.3;
-                if (v > 10) v = 10;
+                if (v < this.MIN_SPEED) v = this.MIN_SPEED;
+                if (v > this.MAX_SPEED) v = this.MAX_SPEED;
                 return v;
             } catch (e) { return this.DEFAULT_SPEED; }
         },
@@ -2284,7 +2393,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 if (typeof logs != 'undefined' && logs && logs.addLog) logs.addLog(msg, color || 'black');
             } catch (e) { }
             try {
-                if (typeof dbg != 'undefined' && dbg && dbg.log) dbg.log('info', '阅读助手：' + msg);
+                if (typeof dbg != 'undefined' && dbg && dbg.log) dbg.log('info', msg);
             } catch (e1) { }
             try { console.log('[阅读助手] ' + msg); } catch (e2) { }
         },
@@ -2300,52 +2409,114 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 return null;
             }
         },
-        //===== 收集正文元素 =====
+        //===== 扫一遍正文元素（过滤 + 按位置排序）=====
+        scanElements: function () {
+            var root = this.contentRoot();
+            if (!root) return [];
+            var selectors = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'video'];
+            var list = [];
+            for (var s = 0; s < selectors.length; s++) {
+                var nodes = root.querySelectorAll(selectors[s]);
+                for (var i = 0; i < nodes.length; i++) {
+                    var el = nodes[i];
+                    if (el.closest && el.closest(this.CONTENT_EXCLUDE_SELECTOR)) continue;
+                    if (!el.offsetHeight || !el.offsetWidth) continue;
+                    if (el.offsetHeight <= 20 || el.offsetWidth <= 20) continue;
+                    if (selectors[s] == 'p') {
+                        var txt = String(el.textContent || '').trim();
+                        if (txt.length < 4) continue;
+                    }
+                    list.push(el);
+                }
+            }
+            list.sort(function (a, b) {
+                return a.getBoundingClientRect().top - b.getBoundingClientRect().top;
+            });
+            return list;
+        },
+        //===== 收集正文元素（开头用，整篇重来一次）=====
         collectContent: function () {
             try {
-                var root = this.contentRoot();
-                if (!root) return 0;
-                var selectors = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'video'];
-                var list = [];
-                for (var s = 0; s < selectors.length; s++) {
-                    var nodes = root.querySelectorAll(selectors[s]);
-                    for (var i = 0; i < nodes.length; i++) {
-                        var el = nodes[i];
-                        if (el.closest && el.closest(this.CONTENT_EXCLUDE_SELECTOR)) continue;
-                        if (!el.offsetHeight || !el.offsetWidth) continue;
-                        if (el.offsetHeight <= 20 || el.offsetWidth <= 20) continue;
-                        if (selectors[s] == 'p') {
-                            var txt = String(el.textContent || '').trim();
-                            if (txt.length < 4) continue;
-                        }
-                        list.push(el);
-                    }
-                }
-                list.sort(function (a, b) {
-                    return a.getBoundingClientRect().top - b.getBoundingClientRect().top;
-                });
+                var list = this.scanElements();
                 this._elements = list;
+                this._seen = list.slice(0);
                 this._index = 0;
+                this._extendTries = 0;
                 return list.length;
             } catch (e) {
                 return 0;
             }
         },
-        //每个段落的停留时间加一点随机（避免节奏太机械）
+        //===== 增量收集：把「之前没见过的新元素」接到队尾 =====
+        //  超星正文页往下滚会懒加载出之前没有的段落，
+        //  只在开头收集一次会漏掉后半篇，所以每读完一批就再扫一遍。
+        refreshContent: function () {
+            try {
+                var list = this.scanElements();
+                var added = 0;
+                for (var i = 0; i < list.length; i++) {
+                    var el = list[i];
+                    if (this._seen.indexOf(el) >= 0) continue;
+                    this._seen.push(el);
+                    this._elements.push(el);
+                    added++;
+                }
+                return added;
+            } catch (e) {
+                return 0;
+            }
+        },
+        //每个段落的停留时间加一点随机（避免节奏太机械，上下浮动 10%）
         jitter: function (baseMs) {
-            return Math.max(200, Math.round(baseMs * (0.75 + Math.random() * 0.5)));
+            return Math.max(200, Math.round(baseMs * (0.9 + Math.random() * 0.2)));
         },
         //===== 逐段阅读 =====
         scrollToNext: function () {
             var self = this;
             try {
                 if (!this.enabled()) { this.stop(); return; }
-                if (this._index >= this._elements.length) { this.complete(); return; }
+                if (this._index >= this._elements.length) { this.extend(); return; }
                 var el = this._elements[this._index];
                 try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { }
                 this._index++;
                 this._timer = setTimeout(function () { self.scrollToNext(); }, this.jitter(this.speed() * 1000));
             } catch (e1) {
+                this.complete();
+            }
+        },
+        //===== 读到加载不出来为止 =====
+        //  读完当前这一批之后：滚到页面底部触发懒加载 → 等一会儿 → 再扫一遍。
+        //  扫出新内容就接着读；连着几次都扫不出新内容，才算真的读到底了。
+        extend: function () {
+            var self = this;
+            try {
+                if (!this.enabled()) { this.stop(); return; }
+                if (this._extendTries >= this.EXTEND_TRIES) {
+                    this.log('已经读到底：连续 ' + this.EXTEND_TRIES + ' 次尝试都没有再加载出新内容', 'green');
+                    this.complete();
+                    return;
+                }
+                this._extendTries++;
+                //滚到页面底部，触发懒加载
+                try {
+                    var h = _d.documentElement ? _d.documentElement.scrollHeight : 0;
+                    if (h) _w.scrollTo({ top: h, behavior: 'smooth' });
+                } catch (e) { }
+                this._timer = setTimeout(function () {
+                    try {
+                        if (!self.enabled()) { self.stop(); return; }
+                        var added = self.refreshContent();
+                        if (added > 0) {
+                            self._extendTries = 0;
+                            self.log('页面又加载出 ' + added + ' 段新内容，继续往下读', 'blue');
+                            self.scrollToNext();
+                            return;
+                        }
+                        //还没加载出来：再等一轮
+                        self.extend();
+                    } catch (e1) { self.complete(); }
+                }, self.EXTEND_WAIT);
+            } catch (e) {
                 this.complete();
             }
         },
@@ -2380,7 +2551,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             var self = this;
             try { this.stop(); } catch (e) { }
             this._running = false;
-            this.log('正文已读完（超星按真实浏览时长判定，脚本不发任何完成上报）', 'green');
+            this.log('正文已读完（超星按真实浏览时长判定，脚本不发任何完成上报请求）', 'green');
             //通知顶层（同一标签页里的其它页面可以据此继续）
             try { _w.top.unrivalReadDone = 1; } catch (e1) { }
             //页面里有「下一章」按钮就点它（与参考实现一致）
@@ -2444,7 +2615,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     var n = self.collectContent();
                     if (n > 0) {
                         self._running = true;
-                        self.log('开始阅读：共 ' + n + ' 个内容元素', 'blue');
+                        self.log('开始阅读：共 ' + n + ' 个内容元素，每段停留 ' + self.speed() + ' 秒', 'blue');
                         if (self.mode() == 'page') self.pageScroll(); else self.scrollToNext();
                         return;
                     }
@@ -2462,7 +2633,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
     } catch (e) {
         console.log(e);
     }
-    //==================== v1.11.1 阅读助手结束 ====================
+    //==================== v1.11.2 阅读助手结束 ====================
 
     //==================== v1.8.2 调试命令通道开始 ====================
     // 【v1.8.2 相比 v1.7 改了什么】
@@ -2860,7 +3031,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             } catch (e) { return '未知'; }
         },
         say: function (msg) {
-            try { logs.addLog(msg, 'blue'); } catch (e) { }
+            try { logs.addLog(logSpec.tag(msg, '测验'), 'blue'); } catch (e) { }
         },
         //where：前缀；done：读完之后要执行的收尾（清空 iframe）
         report: function (where, done) {
@@ -2971,7 +3142,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     this.apply(true);
                     setTimeout(function () {
                         try {
-                            logs.addLog('已处于暂停状态：不会自动翻到下一章，也不会自动作答/提交', 'orange');
+                            logs.addLog('[运行] 已处于暂停状态：不会自动翻到下一章，也不会自动作答或提交', 'orange');
                         } catch (e) { }
                     }, 500);
                 }
@@ -3028,7 +3199,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     if (typeof autoRun != 'undefined' && autoRun.enabled()) {
                         try {
                             if (typeof logs != 'undefined' && logs && logs.addLog) {
-                                logs.addLog('全程托管：超星提示本章未开放（闯关模式，上一节可能有未完成的任务点），脚本继续尝试推进', 'orange');
+                                logs.addLog('[托管] 超星提示本章未开放（闯关模式，上一节可能有未完成的任务点），脚本继续尝试推进', 'orange');
                             }
                         } catch (e0) { }
                     } else {
@@ -3091,188 +3262,209 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             .unrival-field { margin-bottom:8px; }
             .unrival-field > span { display:block; font-size:12px; color:#888; margin-bottom:3px; }
             .unrival-field input, .unrival-field select { width:100%; box-sizing:border-box; }
+            /* v1.11.2：左右两栏 —— 左边配置区，右边运行控制 */
+            .unrival-mainrow { display:flex; flex-wrap:wrap; align-items:flex-start; margin:0 -8px; }
+            .unrival-maincol { flex:1 1 620px; min-width:0; margin:0 8px; }
+            .unrival-sidecol { flex:0 0 250px; margin:0 8px; position:sticky; top:12px; }
+            @media (max-width: 991px) {
+                /* 窄屏：运行控制顶到最上面，主操作不用往下滚 */
+                .unrival-sidecol { order:-1; flex:1 1 100%; position:static; margin-bottom:12px; }
+            }
         </style>
         <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
         <link href="https://z.chaoxing.com/yanshi/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body>
         <div class="row" style="margin: 10px;">
-            <div class="col-md-8 col-md-offset-2">
+            <div class="col-md-10 col-md-offset-1">
                 <div class="header clearfix">
                     <h3 id="unrivalTitle" class="text-muted" style="margin-top: 20px;margin-bottom: 0;float: left;">超星学习通小助手 <span id="unrivalVer">v?</span>（AI 版）&ensp;<span style="font-size:12px;font-weight:normal;">qianbkk</span></h3><div id="onlineNum"></div>
                 </div>
                 <hr style="margin-top: 10px;margin-bottom: 20px;">
-                <div class="panel panel-info" id="normalQuery">
-                    <div class="panel-heading">任务配置</div>
-                    <div class="panel-body">
-                        <div class="unrival-row">
-                            <div class="unrival-label">视频倍速：</div>
-                            <div class="unrival-ctl">
-                                <input type="number" id="unrivalRate" style="width: 80px;">
-                                &ensp;
-                                <a id='updateRateButton' class="btn btn-default">保存</a>
-                                &nbsp;|&nbsp;
-                                <a id='reviewModeButton' class="btn btn-default">复习模式</a>
-                                &nbsp;|&nbsp;
-                                <a id='videoTimeButton' class="btn btn-default">查看学习进度</a>
-                                &nbsp;|&nbsp;
-                                <a id='fuckMeModeButton' class="btn btn-default" href="https://scriptcat.org/script-show-page/379" target="view_window">后台挂机</a>
-                                &nbsp;
-                                <a id='backGround' class="btn btn-default" target="view_window">激活挂机</a>
+                <div class="unrival-mainrow">
+                    <div class="unrival-maincol">
+                        <div class="panel panel-info" id="normalQuery">
+                            <div class="panel-heading">任务配置</div>
+                            <div class="panel-body">
+                                <div class="unrival-row">
+                                    <div class="unrival-label">视频倍速：</div>
+                                    <div class="unrival-ctl">
+                                        <input type="number" id="unrivalRate" style="width: 80px;">
+                                        &ensp;
+                                        <a id='updateRateButton' class="btn btn-default">保存</a>
+                                        &nbsp;|&nbsp;
+                                        <a id='reviewModeButton' class="btn btn-default">复习模式</a>
+                                        &nbsp;|&nbsp;
+                                        <a id='videoTimeButton' class="btn btn-default">查看学习进度</a>
+                                        &nbsp;|&nbsp;
+                                        <a id='fuckMeModeButton' class="btn btn-default" href="https://scriptcat.org/script-show-page/379" target="view_window">后台挂机</a>
+                                        &nbsp;
+                                        <a id='backGround' class="btn btn-default" target="view_window">激活挂机</a>
+                                    </div>
+                                </div>
+                                <div class="unrival-row">
+                                    <div class="unrival-label">章节测试：</div>
+                                    <div class="unrival-ctl">
+                                        <a id='autoDoWorkButton' class="btn btn-default">自动答题</a>&nbsp;|&nbsp;
+                                        <a id='autoSubmitButton' class="btn btn-default">自动提交</a>&nbsp;|&nbsp;
+                                        <a id='autoSaveButton' class="btn btn-default">自动保存</a>
+                                    </div>
+                                </div>
+                                <div class="unrival-row">
+                                    <div class="unrival-label">托管模式：</div>
+                                    <div class="unrival-ctl">
+                                        <label><input type="checkbox" id="unrivalAutoRun"> 全程托管：遇到直播/阅读等做不了的任务自动跳过，一路推进到最后一节</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="unrival-row">
-                            <div class="unrival-label">章节测试：</div>
-                            <div class="unrival-ctl">
-                                <a id='autoDoWorkButton' class="btn btn-default">自动答题</a>&nbsp;|&nbsp;
-                                <a id='autoSubmitButton' class="btn btn-default">自动提交</a>&nbsp;|&nbsp;
-                                <a id='autoSaveButton' class="btn btn-default">自动保存</a>
+                        <div class="unrival-grid">
+                            <div class="panel panel-info" id="ctPanel">
+                                <div class="panel-heading">答题设置 · 题库（不用 AI 也能答）</div>
+                                <div class="panel-body">
+                                    <div class="unrival-field">
+                                        <span>题库 Token（选填，填了能提高题库并发）</span>
+                                        <input type="password" id="unrivalCtToken" placeholder="选填">
+                                    </div>
+                                    <div class="unrival-field">
+                                        <span>正确率门槛（%，自动提交门槛）</span>
+                                        <input type="number" id="unrivalAccuracy" min="0" max="100">
+                                    </div>
+                                    <div class="unrival-field">
+                                        <span>翻章模式</span>
+                                        <select id="unrivalJumpType">
+                                            <option value="1">遍历</option>
+                                            <option value="2">不跳转</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <a id='saveCtButton' class="btn btn-default">保存题库设置</a>
+                                        &nbsp;|&nbsp;<span id="ctStatusText" style="font-size:13px;color:#666;">已保存</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="panel panel-info" id="aiPanel">
+                                <div class="panel-heading">答题设置 · AI 接口（可选）</div>
+                                <div class="panel-body">
+                                    <div class="unrival-field">
+                                        <span>Base URL（接口根地址，不带 /chat/completions）</span>
+                                        <input type="text" id="unrivalAiBaseUrl" placeholder="https://api.deepseek.com/v1">
+                                    </div>
+                                    <div class="unrival-field">
+                                        <span>模型</span>
+                                        <input type="text" id="unrivalAiModel" placeholder="deepseek-chat">
+                                    </div>
+                                    <div class="unrival-field">
+                                        <span>API Key</span>
+                                        <input type="password" id="unrivalAiKey" placeholder="sk-...">
+                                    </div>
+                                    <div>
+                                        <a id='saveAiButton' class="btn btn-default">保存AI设置</a>
+                                        &nbsp;|&nbsp;<a id='testAiButton' class="btn btn-default">测试连通性</a>
+                                        &nbsp;|&nbsp;<span id="aiStatusText" style="font-size:13px;color:#666;">未配置</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="unrival-row">
-                            <div class="unrival-label">运行控制：</div>
-                            <div class="unrival-ctl">
-                                <a id='pauseStartButton' class="btn btn-success disabled" aria-disabled="true">开始/继续</a>
-                                &nbsp;
-                                <a id='pauseToggleButton' class="btn btn-danger">暂停</a>
-                                &nbsp;|&nbsp;<span id="pauseStatusText" style="font-size:13px;color:#666;">运行中</span>
+                        <div class="panel panel-info" id="workAutoPanel">
+                            <div class="panel-heading">章节测验 / 作业自动作答</div>
+                            <div class="panel-body">
+                                <div class="unrival-grid" style="margin:0;">
+                                    <label style="flex:1 1 0;min-width:230px;">
+                                        <input type="checkbox" id="unrivalWorkAuto"> 章节测验/作业自动作答
+                                    </label>
+                                    <label style="flex:1 1 0;min-width:230px;">
+                                        <input type="checkbox" id="unrivalWorkSubmit"> 全部题目有依据时自动提交
+                                    </label>
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <a id='saveWorkAutoButton' class="btn btn-default">保存自动作答设置</a>
+                                    &nbsp;|&nbsp;<span id="workAutoStatusText" style="font-size:13px;color:#666;">已开启</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="unrival-row">
-                            <div class="unrival-label">托管模式：</div>
-                            <div class="unrival-ctl">
-                                <label><input type="checkbox" id="unrivalAutoRun"> 全程托管：遇到直播/阅读等做不了的任务自动跳过，一路推进到最后一节</label>
+                        <div class="panel panel-info" id="logPanel">
+                            <div class="panel-heading">运行日志</div>
+                            <div class="panel-body">
+                                <div style="text-align:right;margin-bottom:6px;">
+                                    <a id='clearLogButton' class='btn btn-default btn-xs'>清空运行日志</a>
+                                </div>
+                                <div id="result" style="overflow:auto;line-height: 30px;">
+                                    <div id="log">
+                                        <span style="color: red">[00:00:00] [系统] 如果这条提示还在，说明页面出错了，请联系作者</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel panel-info" id="jobPanel">
+                            <div class="panel-heading">任务列表</div>
+                            <div class="panel-body" id='joblist'>
+                            </div>
+                        </div>
+                        <div class="panel panel-info" id="extrasPanel">
+                            <div class="panel-heading">附加功能（实验性 · 未验证）</div>
+                            <div class="panel-body">
+                                <div class="unrival-grid" style="margin:0;">
+                                    <label style="flex:1 1 0;min-width:230px;">
+                                        <input type="checkbox" id="unrivalExPaste"> 强制启用复制粘贴
+                                    </label>
+                                    <label style="flex:1 1 0;min-width:230px;">
+                                        <input type="checkbox" id="unrivalExExam"> 考试/作业端自动作答（只作答，不自动交卷）
+                                    </label>
+                                </div>
+                                <div style="margin-top:6px;">
+                                    <label><input type="checkbox" id="unrivalReadAssist"> 阅读助手（自动逐段滚到底，把整篇读完）</label>
+                                    &ensp;<span style="font-size:13px;color:#666;">每段停留 <input type="number" id="unrivalReadSpeed" min="0.3" max="10" step="0.1" style="width:64px;"> 秒（默认 10）</span>
+                                </div>
+                                <div style="margin-top:4px;font-size:12px;color:#999;">
+                                    往下滚会加载出后续内容，助手会一直读到加载不出来为止；全程只滚动，不发任何完成上报请求。
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <a id='saveExButton' class="btn btn-default">保存附加功能设置</a>
+                                    &nbsp;|&nbsp;<span id="exStatusText" style="font-size:13px;color:#666;">全部关闭</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel panel-warning" id="debugPanel">
+                            <div class="panel-heading">调试模式</div>
+                            <div class="panel-body">
+                                <div style="font-size:12px;color:#999;margin-bottom:8px;">
+                                    仅开发时使用：需先在本机运行 log-sink（端口 8124）。开启后面板日志实时落盘，并可用 POST /__cmd 远程操控脚本。
+                                </div>
+                                <div style="font-size:14px;">
+                                    <label><input type="checkbox" id="unrivalDbgEnabled"> 调试模式（发送日志到本机）</label>
+                                </div>
+                                <div style="font-size:14px;margin-top:6px;">
+                                    接收端地址：<input type="text" id="unrivalDbgSink" style="width:300px;">
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <a id='saveDbgButton' class="btn btn-default">保存调试设置</a>
+                                    &nbsp;|&nbsp;<span id="dbgStatusText" style="font-size:13px;color:#666;">已关闭</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel panel-info" id='videoTime' style="display: none;height: 300px;">
+                            <div class="panel-heading">学习进度</div>
+                            <div class="panel-body" style="height: 100%;">
+                                <iframe id="videoTimeContent" src="" frameborder="0" scrolling="auto"
+                                    style="width: 100%;height: 85%;"></iframe>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="unrival-grid">
-                    <div class="panel panel-info" id="ctPanel">
-                        <div class="panel-heading">答题设置 · 题库（不用 AI 也能答）</div>
-                        <div class="panel-body">
-                            <div class="unrival-field">
-                                <span>题库 Token（选填，填了能提高题库并发）</span>
-                                <input type="password" id="unrivalCtToken" placeholder="选填">
-                            </div>
-                            <div class="unrival-field">
-                                <span>正确率门槛（%，自动提交门槛）</span>
-                                <input type="number" id="unrivalAccuracy" min="0" max="100">
-                            </div>
-                            <div class="unrival-field">
-                                <span>翻章模式</span>
-                                <select id="unrivalJumpType">
-                                    <option value="1">遍历</option>
-                                    <option value="2">不跳转</option>
-                                </select>
-                            </div>
-                            <div>
-                                <a id='saveCtButton' class="btn btn-default">保存题库设置</a>
-                                &nbsp;|&nbsp;<span id="ctStatusText" style="font-size:13px;color:#666;">已保存</span>
+                    <div class="unrival-sidecol">
+                        <div class="panel panel-primary" id="runCtlPanel">
+                            <div class="panel-heading">运行控制</div>
+                            <div class="panel-body">
+                                <a id='pauseStartButton' class="btn btn-success btn-lg btn-block" aria-disabled="true">开始/继续</a>
+                                <a id='pauseToggleButton' class="btn btn-danger btn-sm btn-block" style="margin-top:8px;">暂停</a>
+                                <div style="margin-top:12px;text-align:center;font-size:13px;color:#666;">
+                                    当前状态：<span id="pauseStatusText">运行中</span>
+                                </div>
+                                <div style="margin-top:10px;font-size:12px;color:#999;line-height:1.8;">
+                                    「开始/继续」恢复自动翻章与自动作答；「暂停」立即挂起所有自动操作。
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="panel panel-info" id="aiPanel">
-                        <div class="panel-heading">答题设置 · AI 接口（可选）</div>
-                        <div class="panel-body">
-                            <div class="unrival-field">
-                                <span>Base URL（接口根地址，不带 /chat/completions）</span>
-                                <input type="text" id="unrivalAiBaseUrl" placeholder="https://api.deepseek.com/v1">
-                            </div>
-                            <div class="unrival-field">
-                                <span>模型</span>
-                                <input type="text" id="unrivalAiModel" placeholder="deepseek-chat">
-                            </div>
-                            <div class="unrival-field">
-                                <span>API Key</span>
-                                <input type="password" id="unrivalAiKey" placeholder="sk-...">
-                            </div>
-                            <div>
-                                <a id='saveAiButton' class="btn btn-default">保存AI设置</a>
-                                &nbsp;|&nbsp;<a id='testAiButton' class="btn btn-default">测试连通性</a>
-                                &nbsp;|&nbsp;<span id="aiStatusText" style="font-size:13px;color:#666;">未配置</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="panel panel-info" id="workAutoPanel">
-                    <div class="panel-heading">章节测验 / 作业自动作答</div>
-                    <div class="panel-body">
-                        <div class="unrival-grid" style="margin:0;">
-                            <label style="flex:1 1 0;min-width:230px;">
-                                <input type="checkbox" id="unrivalWorkAuto"> 章节测验/作业自动作答
-                            </label>
-                            <label style="flex:1 1 0;min-width:230px;">
-                                <input type="checkbox" id="unrivalWorkSubmit"> 全部题目有依据时自动提交
-                            </label>
-                        </div>
-                        <div style="margin-top:8px;">
-                            <a id='saveWorkAutoButton' class="btn btn-default">保存自动作答设置</a>
-                            &nbsp;|&nbsp;<span id="workAutoStatusText" style="font-size:13px;color:#666;">已开启</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="panel panel-info" id="logPanel">
-                    <div class="panel-heading">运行日志</div>
-                    <div class="panel-body">
-                        <div style="text-align:right;margin-bottom:6px;">
-                            <a id='clearLogButton' class='btn btn-default btn-xs'>清空运行日志</a>
-                        </div>
-                        <div id="result" style="overflow:auto;line-height: 30px;">
-                            <div id="log">
-                                <span style="color: red">[00:00:00]如果此提示不消失，说明页面出现了错误，请联系作者</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="panel panel-info" id="jobPanel">
-                    <div class="panel-heading">任务列表</div>
-                    <div class="panel-body" id='joblist'>
-                    </div>
-                </div>
-                <div class="panel panel-info" id="extrasPanel">
-                    <div class="panel-heading">附加功能（实验性 · 未验证）</div>
-                    <div class="panel-body">
-                        <div class="unrival-grid" style="margin:0;">
-                            <label style="flex:1 1 0;min-width:230px;">
-                                <input type="checkbox" id="unrivalExPaste"> 强制启用复制粘贴
-                            </label>
-                            <label style="flex:1 1 0;min-width:230px;">
-                                <input type="checkbox" id="unrivalExExam"> 考试/作业端自动作答（只作答，不自动交卷）
-                            </label>
-                        </div>
-                        <div style="margin-top:6px;">
-                            <label><input type="checkbox" id="unrivalReadAssist"> 阅读助手（打开阅读正文页后自动逐段滚读完）</label>
-                            &ensp;<span style="font-size:13px;color:#666;">每段停留 <input type="number" id="unrivalReadSpeed" min="0.3" max="10" step="0.1" style="width:64px;"> 秒</span>
-                        </div>
-                        <div style="margin-top:8px;">
-                            <a id='saveExButton' class="btn btn-default">保存附加功能设置</a>
-                            &nbsp;|&nbsp;<span id="exStatusText" style="font-size:13px;color:#666;">全部关闭</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="panel panel-warning" id="debugPanel">
-                    <div class="panel-heading">调试模式</div>
-                    <div class="panel-body">
-                        <div style="font-size:12px;color:#999;margin-bottom:8px;">
-                            仅开发时使用：需先在本机运行 log-sink（端口 8124）。开启后面板日志实时落盘，并可用 POST /__cmd 远程操控脚本。
-                        </div>
-                        <div style="font-size:14px;">
-                            <label><input type="checkbox" id="unrivalDbgEnabled"> 调试模式（发送日志到本机）</label>
-                        </div>
-                        <div style="font-size:14px;margin-top:6px;">
-                            接收端地址：<input type="text" id="unrivalDbgSink" style="width:300px;">
-                        </div>
-                        <div style="margin-top:8px;">
-                            <a id='saveDbgButton' class="btn btn-default">保存调试设置</a>
-                            &nbsp;|&nbsp;<span id="dbgStatusText" style="font-size:13px;color:#666;">已关闭</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="panel panel-info" id='videoTime' style="display: none;height: 300px;">
-                    <div class="panel-heading">学习进度</div>
-                    <div class="panel-body" style="height: 100%;">
-                        <iframe id="videoTimeContent" src="" frameborder="0" scrolling="auto"
-                            style="width: 100%;height: 85%;"></iframe>
                     </div>
                 </div>                <div class="panel panel-info" id='workPanel' style="display: none;height: 520px;">
                     <div class="panel-heading">章节测试</div>
@@ -3296,11 +3488,12 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 var btnPause = _d.getElementById('pauseToggleButton');
                 var txt = _d.getElementById('pauseStatusText');
                 if (btnStart) {
-                    btnStart.setAttribute('class', paused ? 'btn btn-success' : 'btn btn-success disabled');
+                    //v1.11.2：主按钮大号（btn-lg btn-block），次按钮小号（btn-sm btn-block）
+                    btnStart.setAttribute('class', paused ? 'btn btn-success btn-lg btn-block' : 'btn btn-success btn-lg btn-block disabled');
                     btnStart.setAttribute('aria-disabled', paused ? 'false' : 'true');
                 }
                 if (btnPause) {
-                    btnPause.setAttribute('class', paused ? 'btn btn-danger disabled' : 'btn btn-danger');
+                    btnPause.setAttribute('class', paused ? 'btn btn-danger btn-sm btn-block disabled' : 'btn btn-danger btn-sm btn-block');
                     btnPause.setAttribute('aria-disabled', paused ? 'true' : 'false');
                 }
                 if (txt) txt.innerHTML = paused ? '已暂停' : '运行中';
@@ -3343,18 +3536,18 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     clearInterval(htmlHook);
                     if (cVersion < 86) {
                         logs.addLog(
-                            '\u60a8\u7684\u6d4f\u89c8\u5668\u5185\u6838\u8fc7\u8001\uff0c\u8bf7\u66f4\u65b0\u7248\u672c\u6216\u4f7f\u7528\u4e3b\u6d41\u6d4f\u89c8\u5668\uff0c\u63a8\u8350\u003c\u0061\u0020\u0068\u0072\u0065\u0066\u003d\u0022\u0068\u0074\u0074\u0070\u0073\u003a\u002f\u002f\u0077\u0077\u0077\u002e\u006d\u0069\u0063\u0072\u006f\u0073\u006f\u0066\u0074\u002e\u0063\u006f\u006d\u002f\u007a\u0068\u002d\u0063\u006e\u002f\u0065\u0064\u0067\u0065\u0022\u0020\u0074\u0061\u0072\u0067\u0065\u0074\u003d\u0022\u0076\u0069\u0065\u0077\u005f\u0077\u0069\u006e\u0064\u006f\u0077\u0022\u003e\u0065\u0064\u0067\u0065\u6d4f\u89c8\u5668\u003c\u002f\u0061\u003e',
+                            '[系统] 您的浏览器内核过老，请更新版本或使用主流浏览器（推荐 Edge / Chrome）',
                             'red');
                         stop = true;
                         return;
                     }
                     if (isMobile) {
-                        logs.addLog('手机浏览器不保证能正常运行此脚本', 'orange');
+                        logs.addLog('[系统] 手机浏览器不保证能正常运行此脚本', 'orange');
                     }
                     _d.addEventListener('visibilitychange', function () {
                         let isH = _d.hidden;
                         if (!isH) {
-                            logs.addLog('挂机功能不稳定，不建议长时间最小化窗口', 'orange');
+                            logs.addLog('[系统] 挂机功能不稳定，不建议长时间最小化窗口', 'orange');
                         }
                     });
                     _d.getElementById('unrivalRate').value = rate;
@@ -3386,7 +3579,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     _d.getElementById('unrivalAutoRun').onchange = function () {
                         var _on = !!this.checked;
                         autoRun.setEnabled(_on);
-                        logs.addLog(_on ? '全程托管已开启：做不了的任务（直播/阅读等）会跳过，脚本一路推进到最后一节' : '全程托管已关闭：遇到做不了的任务会停下等你处理', _on ? 'green' : 'orange');
+                        logs.addLog(_on ? '[设置] 全程托管已开启：做不了的任务（直播/阅读等）会跳过，脚本一路推进到最后一节' : '[设置] 全程托管已关闭：遇到做不了的任务会停下等你处理', _on ? 'green' : 'orange');
                     };
                     _d.getElementById('unrivalDbgEnabled').checked = dbg.cfg.enabled;
                     _d.getElementById('unrivalDbgSink').value = dbg.cfg.sink;
@@ -3406,7 +3599,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         jumpType = (pauseCtl.isPaused()) ? 2 : (_jtReal === '2' ? 2 : 1);
                         var _ctTxt = '门槛 ' + accuracy + '%' + (token ? '，题库并发已提升' : '，未填题库 Token');
                         _d.getElementById('ctStatusText').innerHTML = _ctTxt;
-                        logs.addLog('题库设置已保存：' + _ctTxt, 'green');
+                        logs.addLog('[设置] 题库设置已保存：' + _ctTxt, 'green');
                     }
                     //  AI 块：Base URL / 模型 / API Key（不填就退回纯题库模式）
                     _d.getElementById('saveAiButton').onclick = function () {
@@ -3415,7 +3608,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         GM_setValue('unrivalAiKey', _d.getElementById('unrivalAiKey').value.trim());
                         aiReload();
                         var aiOkCfg = (aiState.baseUrl && aiState.model && aiState.key);
-                        logs.addLog(aiOkCfg ? ('AI设置已保存：' + aiState.model + ' @ ' + aiState.baseUrl) : 'AI设置已保存，但配置不完整（缺 Base URL / 模型 / API Key），将退回纯题库模式', aiOkCfg ? 'green' : 'orange');
+                        logs.addLog(aiOkCfg ? ('[设置] AI 设置已保存：' + aiState.model + ' @ ' + aiState.baseUrl) : '[设置] AI 设置已保存，但配置不完整（缺 Base URL / 模型 / API Key），将退回纯题库模式', aiOkCfg ? 'green' : 'orange');
                     }
                     _d.getElementById('saveExButton').onclick = function () {
                         extras.cfg.paste = _d.getElementById('unrivalExPaste').checked;
@@ -3424,7 +3617,8 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         var _readOn = !!_d.getElementById('unrivalReadAssist').checked;
                         GM_setValue('unrivalReadAssist', _readOn ? '1' : '0');
                         var _readSpeed = parseFloat(_d.getElementById('unrivalReadSpeed').value);
-                        if (isNaN(_readSpeed) || _readSpeed <= 0) _readSpeed = 1.0;
+                        //v1.11.2：每段停留秒数的默认值从 1 秒改成 10 秒
+                        if (isNaN(_readSpeed) || _readSpeed <= 0) _readSpeed = 10;
                         if (_readSpeed < 0.3) _readSpeed = 0.3;
                         if (_readSpeed > 10) _readSpeed = 10;
                         GM_setValue('unrivalReadSpeed', String(_readSpeed));
@@ -3448,12 +3642,12 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         if (_readOn) on.push('阅读助手');
                         if (extras.cfg.keep) on.push('任务页保活');
                         _d.getElementById('exStatusText').innerHTML = on.length ? ('已开启：' + on.join('、')) : '全部关闭';
-                        logs.addLog('附加功能设置已保存（' + (on.length ? on.join('、') : '全部关闭') + '），部分功能尚未在真实页面验证', on.length ? 'orange' : 'green');
+                        logs.addLog('[设置] 附加功能设置已保存（' + (on.length ? on.join('、') : '全部关闭') + '），部分功能尚未在真实页面验证', on.length ? 'orange' : 'green');
                     }
                     //v1.10.0：原「暂停/继续」切换按钮拆成两个 —— 「开始/继续」与「暂停」
                     _d.getElementById('pauseStartButton').onclick = function () {
                         if (!pauseCtl.isPaused()) {
-                            logs.addLog('已在运行中，无需重复开始', 'gray');
+                            logs.addLog('[运行] 已在运行中，无需重复开始', 'gray');
                             return;
                         }
                         pauseCtl.set(false);
@@ -3462,16 +3656,16 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         try {
                             _d.getElementById('unrivalJumpType').value = jumpMode.get();
                         } catch (e) { }
-                        logs.addLog('已继续：恢复自动翻章 / 作答 / 提交', 'green');
+                        logs.addLog('[运行] 已继续：恢复自动翻章 / 作答 / 提交', 'green');
                     };
                     _d.getElementById('pauseToggleButton').onclick = function () {
                         if (pauseCtl.isPaused()) {
-                            logs.addLog('已处于暂停状态', 'gray');
+                            logs.addLog('[运行] 已处于暂停状态，无需重复暂停', 'gray');
                             return;
                         }
                         pauseCtl.set(true);
                         _syncPauseUI();
-                        logs.addLog('已暂停：不再自动翻章 / 作答 / 提交', 'orange');
+                        logs.addLog('[运行] 已暂停：不再自动翻章 / 作答 / 提交', 'orange');
                     };
                     _d.getElementById('saveDbgButton').onclick = function () {
                         dbg.cfg.enabled = _d.getElementById('unrivalDbgEnabled').checked;
@@ -3483,7 +3677,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                             : '已关闭';
                         dbg.attach();
                         dbg.log('info', '调试设置已保存：enabled=' + dbg.cfg.enabled + ' sink=' + dbg.cfg.sink);
-                        logs.addLog('调试设置已保存（' + (dbg.cfg.enabled ? '已开启 → ' + dbg.cfg.sink : '已关闭') + '）', 'green');
+                        logs.addLog('[设置] 调试设置已保存（' + (dbg.cfg.enabled ? '已开启 → ' + dbg.cfg.sink : '已关闭') + '）', 'green');
                     }
                     _d.getElementById('saveWorkAutoButton').onclick = function () {
                         workAuto.cfg.enable = _d.getElementById('unrivalWorkAuto').checked;
@@ -3494,17 +3688,17 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         if (workAuto.cfg.enable) won.push('自动作答');
                         if (workAuto.cfg.submit) won.push('自动提交');
                         _d.getElementById('workAutoStatusText').innerHTML = won.length ? ('已开启：' + won.join('、')) : '已关闭';
-                        logs.addLog('自动作答设置已保存（' + (won.length ? won.join('、') : '已关闭') + '）', 'green');
+                        logs.addLog('[设置] 自动作答设置已保存（' + (won.length ? won.join('、') : '已关闭') + '）', 'green');
                     }
                     _d.getElementById('testAiButton').onclick = function () {
                         aiReload();
                         if (!aiState.baseUrl || !aiState.model || !aiState.key) {
-                            logs.addLog('AI配置不完整，请先填写 Base URL / 模型 / API Key', 'red');
+                            logs.addLog('[AI] 配置不完整，请先填写 Base URL / 模型 / API Key', 'red');
                             return;
                         }
-                        logs.addLog('正在测试AI连通性...', 'black');
+                        logs.addLog('[AI] 正在测试连通性…', 'black');
                         aiTest(function (aiTestOk, aiTestMsg) {
-                            logs.addLog(aiTestOk ? ('AI连通性正常（' + aiTestMsg + '）') : ('AI连通性测试失败：' + aiTestMsg), aiTestOk ? 'green' : 'red');
+                            logs.addLog(aiTestOk ? ('[AI] 连通性正常（' + aiTestMsg + '）') : ('[AI] 连通性测试失败：' + aiTestMsg), aiTestOk ? 'green' : 'red');
                         });
                     }
                     _d.getElementById('updateRateButton').onclick = function () {
@@ -3517,25 +3711,25 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         GM_setValue('unrivalrate', urate);
                         rate = urate;
                         if (urate > 0) {
-                            logs.addLog('视频倍速已更新为' + urate + '倍，将在3秒内生效', 'green');
+                            logs.addLog('[设置] 视频倍速已更新为 ' + urate + ' 倍，将在 3 秒内生效', 'green');
                         } else {
-                            logs.addLog('奇怪的倍速，将会自动跳过视频任务', 'orange');
+                            logs.addLog('[视频] 倍速数值异常（不在允许区间），该视频将自动跳过', 'orange');
                         }
                     }
                     _d.getElementById('backGround').onclick = function () {
-                        logs.addLog('挂机激活成功，您现在可以最小化页面了', 'green');
+                        logs.addLog('[系统] 挂机激活成功，现在可以最小化页面了', 'green');
                         _w.top.backNow = 1;
                     }
                     _d.getElementById('reviewModeButton').onclick = function () {
                         let reviewButton = _d.getElementById('reviewModeButton');
                         if (reviewButton.getAttribute('class') == 'btn btn-default') {
                             _d.getElementById('reviewModeButton').setAttribute('class', 'btn btn-success');
-                            logs.addLog('复习模式已开启，遇到已完成的视频任务不会跳过', 'green');
+                            logs.addLog('[设置] 复习模式已开启：遇到已完成的视频任务不会跳过', 'green');
                             GM_setValue('unrivalreview', '1');
                             _w.top.unrivalReviewMode = '1';
                         } else {
                             _d.getElementById('reviewModeButton').setAttribute('class', 'btn btn-default');
-                            logs.addLog('复习模式已关闭，遇到已完成的视频任务会自动跳过', 'green');
+                            logs.addLog('[设置] 复习模式已关闭：遇到已完成的视频任务会自动跳过', 'green');
                             GM_setValue('unrivalreview', '0');
                             _w.top.unrivalReviewMode = '0';
                         }
@@ -3544,12 +3738,12 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         let autoDoWorkButton = _d.getElementById('autoDoWorkButton');
                         if (autoDoWorkButton.getAttribute('class') == 'btn btn-default') {
                             _d.getElementById('autoDoWorkButton').setAttribute('class', 'btn btn-success');
-                            logs.addLog('自动做章节测试已开启，将会自动做章节测试', 'green');
+                            logs.addLog('[设置] 章节测试自动作答已开启', 'green');
                             GM_setValue('unrivaldowork', '1');
                             _w.top.unrivalDoWork = '1';
                         } else {
                             _d.getElementById('autoDoWorkButton').setAttribute('class', 'btn btn-default');
-                            logs.addLog('自动做章节测试已关闭，将不会自动做章节测试', 'green');
+                            logs.addLog('[设置] 章节测试自动作答已关闭', 'green');
                             GM_setValue('unrivaldowork', '0');
                             _w.top.unrivalDoWork = '0';
                         }
@@ -3558,12 +3752,12 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         let autoSubmitButton = _d.getElementById('autoSubmitButton');
                         if (autoSubmitButton.getAttribute('class') == 'btn btn-default') {
                             _d.getElementById('autoSubmitButton').setAttribute('class', 'btn btn-success');
-                            logs.addLog('符合提交标准的章节测试将会自动提交', 'green');
+                            logs.addLog('[设置] 符合提交标准的章节测试将自动提交', 'green');
                             GM_setValue('unrivalautosubmit', '1');
                             _w.top.unrivalAutoSubmit = '1';
                         } else {
                             _d.getElementById('autoSubmitButton').setAttribute('class', 'btn btn-default');
-                            logs.addLog('章节测试将不会自动提交', 'green');
+                            logs.addLog('[设置] 章节测试不自动提交', 'green');
                             GM_setValue('unrivalautosubmit', '0');
                             _w.top.unrivalAutoSubmit = '0';
                         }
@@ -3572,12 +3766,12 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         let autoSaveButton = _d.getElementById('autoSaveButton');
                         if (autoSaveButton.getAttribute('class') == 'btn btn-default') {
                             _d.getElementById('autoSaveButton').setAttribute('class', 'btn btn-success');
-                            logs.addLog('不符合提交标准的章节测试将会自动保存', 'green');
+                            logs.addLog('[设置] 不符合提交标准的章节测试将自动保存', 'green');
                             GM_setValue('unrivalautosave', '1');
                             _w.top.unrivalAutoSave = '1';
                         } else {
                             _d.getElementById('autoSaveButton').setAttribute('class', 'btn btn-default');
-                            logs.addLog('不符合提交标准的章节测试将不会自动保存，等待用户自己操作', 'green');
+                            logs.addLog('[设置] 不符合提交标准的章节测试不自动保存，请自行操作', 'green');
                             GM_setValue('unrivalautosave', '0');
                             _w.top.unrivalAutoSave = '0'; //v1.1修复：原为'1'，导致关闭自动保存后依然生效
                         }
@@ -3592,11 +3786,11 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             }, 100),
             loopjob = () => {
                 if (_w.top.unrivalScriptList.length > 1) {
-                    logs.addLog('您同时开启了多个刷课脚本，会挂科，会挂科，会挂科，会挂科，会挂科，会挂科，会挂科，会挂科', 'red');
+                    logs.addLog('[系统] 检测到同时开启了多个刷课脚本，可能导致进度异常（挂科）', 'red');
                 }
                 if (cVersion < 8.6 * 10) {
                     logs.addLog(
-                        '\u60a8\u7684\u6d4f\u89c8\u5668\u5185\u6838\u8fc7\u8001\uff0c\u8bf7\u66f4\u65b0\u7248\u672c\u6216\u4f7f\u7528\u4e3b\u6d41\u6d4f\u89c8\u5668\uff0c\u63a8\u8350\u003c\u0061\u0020\u0068\u0072\u0065\u0066\u003d\u0022\u0068\u0074\u0074\u0070\u0073\u003a\u002f\u002f\u0077\u0077\u0077\u002e\u006d\u0069\u0063\u0072\u006f\u0073\u006f\u0066\u0074\u002e\u0063\u006f\u006d\u002f\u007a\u0068\u002d\u0063\u006e\u002f\u0065\u0064\u0067\u0065\u0022\u0020\u0074\u0061\u0072\u0067\u0065\u0074\u003d\u0022\u0076\u0069\u0065\u0077\u005f\u0077\u0069\u006e\u0064\u006f\u0077\u0022\u003e\u0065\u0064\u0067\u0065\u6d4f\u89c8\u5668\u003c\u002f\u0061\u003e',
+                        '[系统] 您的浏览器内核过老，请更新版本或使用主流浏览器（推荐 Edge / Chrome）',
                         'red');
                     stop = true;
                     return;
@@ -3635,11 +3829,11 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 if (busyThread <= 0) {
                     if (jumpType != 2) {
                         _w.top.jump = true;
-                        logs.addLog('所有任务处理完毕，5秒后自动下一章', 'green');
+                        logs.addLog('[翻章] 所有任务处理完毕，5 秒后自动跳到下一章', 'green');
                     } else if (pauseCtl.isPaused()) {
-                        logs.addLog('所有任务处理完毕，已暂停：不跳转下一章，点「任务配置 → 开始/继续」恢复', 'orange');
+                        logs.addLog('[翻章] 所有任务处理完毕，已暂停：不跳转下一章，点右侧「开始/继续」恢复', 'orange');
                     } else {
-                        logs.addLog('所有任务处理完毕，用户设置为不跳转，脚本已结束运行，如需自动跳转，请编辑脚本代码参数', 'green');
+                        logs.addLog('[翻章] 所有任务处理完毕，翻章模式设为「不跳转」，脚本已结束运行；如需自动跳转请在面板改回「遍历」', 'green');
                     }
                     clearInterval(loopjob);
                 } else {
@@ -3651,17 +3845,17 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     try {
                         if (!isCat) {
                             logs.addLog(
-                                '推荐使用<a href="https://docs.scriptcat.org/use/#%E5%AE%89%E8%A3%85%E6%89%A9%E5%B1%95" target="view_window">脚本猫</a>运行此脚本，使用其他脚本管理器不保证能正常运行',
+                                '[系统] 推荐使用 <a href="https://docs.scriptcat.org/use/#%E5%AE%89%E8%A3%85%E6%89%A9%E5%B1%95" target="view_window">脚本猫</a> 运行此脚本，其他脚本管理器不保证能正常运行',
                                 'orange');
                         }
                         if (_w.top.unrivalReviewMode == '1') {
-                            logs.addLog('复习模式已开启，遇到已完成的视频任务不会跳过', 'green');
+                            //v1.11.2：原来这里还会再打一遍「复习模式已开启」，与按钮点击处重复 → 去掉
                             _d.getElementById('reviewModeButton').setAttribute('class', ['btn btn-default',
                                 'btn btn-success'
                             ][_w.top.unrivalReviewMode]);
                         }
                         if (_w.top.unrivalDoWork == '1') {
-                            logs.addLog('自动做章节测试已开启，将会自动做章节测试', 'green');
+                            //v1.11.2：原来这里还会再打一遍「自动做章节测试已开启」，与按钮点击处重复 → 去掉
                             _d.getElementById('autoDoWorkButton').setAttribute('class', ['btn btn-default',
                                 'btn btn-success'
                             ][_w.top.unrivalDoWork]);
@@ -3685,11 +3879,11 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
         } catch (e) {
             if (jumpType != 2) {
                 _w.top.jump = true;
-                logs.addLog('此页无任务，5秒后自动下一章', 'green');
+                logs.addLog('[翻章] 本页没有任务（页面数据没解析出来），5 秒后自动跳到下一章', 'green');
             } else if (pauseCtl.isPaused()) {
-                logs.addLog('此页无任务，已暂停：不跳转下一章，点「任务配置 → 开始/继续」恢复', 'orange');
+                logs.addLog('[翻章] 本页没有任务（页面数据没解析出来），已暂停：不跳转下一章，点右侧「开始/继续」恢复', 'orange');
             } else {
-                logs.addLog('此页无任务，用户设置为不跳转，脚本已结束运行，如需自动跳转，请编辑脚本代码参数', 'green');
+                logs.addLog('[翻章] 本页没有任务（页面数据没解析出来），翻章模式设为「不跳转」，脚本已结束运行；如需自动跳转请在面板改回「遍历」', 'green');
             }
             return;
         }
@@ -3770,15 +3964,11 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 onerror: function (err) {
                     console.log(err);
                     if (err.error.indexOf('@connect list') >= 0) {
-                        logs.addLog('请添加安全网址，将 【 //@connect      ' + _h +
-                            ' 】方括号里的内容(不包括方括号)添加到脚本代码内指定位置，否则脚本无法正常运行，如图所示：', 'red');
-                        logs.addLog(
-                            '<img src="https://pan-yz.chaoxing.com/thumbnail/0,0,0/609a8b79cbd6a91d10c207cf2b5f368d">'
-                        );
+                        logs.addLog('[系统] 请添加安全网址：把 【 //@connect      ' + _h + ' 】方括号里的内容（不含方括号）加到脚本代码里指定位置，否则脚本无法正常运行。示例图：<img src="https://pan-yz.chaoxing.com/thumbnail/0,0,0/609a8b79cbd6a91d10c207cf2b5f368d">', 'red');
                         stop = true;
                     } else {
-                        logs.addLog('获取任务详情失败', 'red');
-                        logs.addLog('错误原因：' + err.error, 'red');
+                        logs.addLog('[系统] 获取任务详情失败', 'red');
+                        logs.addLog('[系统] 错误原因：' + err.error, 'red');
                     }
                 }
             });
@@ -3786,7 +3976,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             doVideo = (item) => {
                 if (rate <= 0) {
                     missionList['m' + item['jobid']]['running'] = true;
-                    logs.addLog('奇怪的倍速，视频已自动跳过', 'orange');
+                    logs.addLog('[视频] 倍速设置无效，该视频已自动跳过', 'orange');
                     setTimeout(function () {
                         missionList['m' + item['jobid']]['running'] = false;
                         missionList['m' + item['jobid']]['done'] = true;
@@ -3796,7 +3986,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 if (allowBackground && backGround) {
                     if (_w.top.document.getElementsByClassName('catalog_points_sa').length > 0 || _w.top.document
                         .getElementsByClassName('lock').length > 0) {
-                        logs.addLog('您已安装超星挂机小助手，但此课程可能为闯关模式，不支持后台挂机，将为您在线完成', 'blue');
+                        logs.addLog('[系统] 本课程为闯关模式，不支持后台挂机，改为在线运行', 'blue');
                     } else {
                         item['userid'] = UID;
                         item['classId'] = classId;
@@ -3806,7 +3996,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         GM_setValue('unrivalBackgroundVideo', item);
                         _d.cookie = "videojs_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                         logs.addLog(
-                            '您已安装超星挂机小助手，已添加至后台任务，<a href="unrivalxxtbackground/" target="view_window">点我查看后台</a>',
+                            '[系统] 已添加至后台任务，<a href="unrivalxxtbackground/" target="view_window">点我查看后台</a>',
                             'green');
                         missionList['m' + item['jobid']]['running'] = true;
                         setTimeout(function () {
@@ -3818,11 +4008,11 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 }
                 let videojs_id = String(parseInt(Math.random() * 9999999));
                 _d.cookie = 'videojs_id=' + videojs_id + ';path=/'
-                logs.addLog('开始刷视频：' + item['name'] + '，倍速：' + String(rate) + '倍');
-                logs.addLog('视频观看信息每60秒上报一次，请耐心等待', 'green');
-                logs.addLog('如遇脚本使用异常情况，请检查脚本版本是否为最新版，<a href="https://scriptcat.org/script-show-page/949">点我</a>检查', 'orange');
+                logs.addLog('[视频] 开始刷视频：' + item['name'] + '，倍速：' + String(rate) + '倍');
+                logs.addLog('[视频] 观看进度每 60 秒上报一次，请耐心等待', 'green');
+                logs.addLog('[系统] 如遇异常，请确认脚本为最新版本：<a href="https://scriptcat.org/script-show-page/949" target="_blank">点此检查</a>', 'orange');
                 if (disableMonitor) {
-                    logs.addLog('解除多端学习监控有清除进度风险，请谨慎使用', 'orange');
+                    logs.addLog('[系统] 解除多端学习监控有清除进度的风险，请谨慎使用', 'orange');
                 }
                 let dtype = 'Video';
                 if (item['module'].includes('audio')) {
@@ -3838,7 +4028,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     loop = setInterval(function () {
                         if (rate <= 0) {
                             clearInterval(loop);
-                            logs.addLog('奇怪的倍速，视频已自动跳过', 'orange');
+                            logs.addLog('[视频] 倍速在播放中失效，该视频已自动跳过', 'orange');
                             setTimeout(function () {
                                 missionList['m' + item['jobid']]['running'] = false;
                                 missionList['m' + item['jobid']]['done'] = true;
@@ -3846,7 +4036,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                             return;
                         } else if (item['doublespeed'] == 0 && rate > 1 && _w.top.unrivalReviewMode == '0') {
                             rate = 1;
-                            logs.addLog('该视频不允许倍速播放，已恢复至一倍速，高倍速会被清空进度挂科，勿存侥幸', 'red');
+                            logs.addLog('[视频] 该视频不允许倍速播放，已恢复为一倍速；高倍速可能导致进度被清空', 'red');
                         }
                         rt = missionList['m' + item['jobid']]['rt'];
                         playsTime += rate;
@@ -3872,7 +4062,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                     if (enc.includes('--#')) {
                                         let warnInfo = enc.match(new RegExp('--#(.*?)--#', "ig"))[0]
                                             .replace(/--#/ig, '');
-                                        logs.addLog(warnInfo, 'red');
+                                        logs.addLog(logSpec.tag(warnInfo, '视频'), 'red');
                                         enc = enc.replace(/--#(.*?)--#/ig, '');
                                     }
                                     if (enc.indexOf('.stop') >= 0) {
@@ -3932,7 +4122,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                                     .unrivalReviewMode == '0') {
                                                 clearInterval(loop);
                                                 logs.addLog(
-                                                    '今日学习时间过长，继续学习会导致清空进度，请明天再来',
+                                                    '[系统] 今日学习时间过长，继续学习会导致进度被清空，请明天再来',
                                                     'red');
                                                 setTimeout(function () {
                                                     missionList['m' + item[
@@ -3951,7 +4141,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                             first = false;
                                             if (ispass['isPassed'] && _w.top
                                                 .unrivalReviewMode == '0') {
-                                                logs.addLog('视频任务已完成', 'green');
+                                                logs.addLog('[视频] 视频任务已完成', 'green');
                                                 missionList['m' + item['jobid']]['running'] = false;
                                                 missionList['m' + item['jobid']]['done'] = true;
                                                 clearInterval(loop);
@@ -3959,9 +4149,9 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                             } else if (isdrag == '4') {
                                                 if (_w.top.unrivalReviewMode ==
                                                     '1') {
-                                                    logs.addLog('视频已观看完毕', 'green');
+                                                    logs.addLog('[视频] 视频已观看完毕', 'green');
                                                 } else {
-                                                    logs.addLog('视频已观看完毕，但视频任务未完成',
+                                                    logs.addLog('[视频] 视频已观看完毕，但任务点未完成',
                                                         'red');
                                                 }
                                                 missionList['m' + item['jobid']][
@@ -3976,7 +4166,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
 
                                                 }
                                             } else {
-                                                logs.addLog(item['name'] + '已观看' +
+                                                logs.addLog('[视频] ' + item['name'] + ' 已观看 ' +
                                                     _bold_playTime + '秒，剩余大约' +
                                                     String(item['duration'] -
                                                         _bold_playTime) + '秒');
@@ -3985,7 +4175,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                             console.log(e);
                                             if (res.responseText.indexOf('验证码') >=
                                                 0) {
-                                                logs.addLog('已被超星风控，请<a href="' +
+                                                logs.addLog('[系统] 已被超星风控，请 <a href="' +
                                                     reportsUrl +
                                                     '" target="_blank">点我处理</a>，60秒后自动刷新页面',
                                                     'red');
@@ -3999,7 +4189,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                                 }, 60000);
                                                 return;
                                             }
-                                            logs.addLog('超星返回错误信息，十秒后重试', 'red');
+                                            logs.addLog('[系统] 超星返回错误信息，10 秒后重试', 'red');
                                             times = -10;
                                             return;
                                         }
@@ -4008,18 +4198,11 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                         console.log(err);
                                         if (err.error.indexOf('@connect list') >=
                                             0) {
-                                            logs.addLog(
-                                                '请添加安全网址，将 【 //@connect      ' +
-                                                _h +
-                                                ' 】方括号里的内容(不包括方括号)添加到脚本代码内指定位置，否则脚本无法正常运行，如图所示：',
-                                                'red');
-                                            logs.addLog(
-                                                '<img src="https://pan-yz.chaoxing.com/thumbnail/0,0,0/609a8b79cbd6a91d10c207cf2b5f368d">'
-                                            );
+                                            logs.addLog('[系统] 请添加安全网址：把 【 //@connect      ' + _h + ' 】方括号里的内容（不含方括号）加到脚本代码里指定位置，否则脚本无法正常运行。示例图：<img src="https://pan-yz.chaoxing.com/thumbnail/0,0,0/609a8b79cbd6a91d10c207cf2b5f368d">', 'red');
                                             stop = true;
                                         } else {
-                                            logs.addLog('观看视频失败', 'red');
-                                            logs.addLog('错误原因：' + err.error, 'red');
+                                            logs.addLog('[视频] 观看视频失败', 'red');
+                                            logs.addLog('[系统] 错误原因：' + err.error, 'red');
                                         }
                                         missionList['m' + item['jobid']][
                                             'running'
@@ -4038,7 +4221,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             },
             doDocument = (item) => {
                 missionList['m' + item['jobid']]['running'] = true;
-                logs.addLog('开始刷文档：' + item['name']);
+                logs.addLog('[文档] 开始刷文档：' + item['name']);
                 setTimeout(function () {
                     busyThread += 1;
                     GM_xmlhttpRequest({
@@ -4051,15 +4234,15 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                 busyThread -= 1;
                                 let ispass = JSON.parse(res.responseText);
                                 if (ispass['status']) {
-                                    logs.addLog('文档任务已完成', 'green');
+                                    logs.addLog('[文档] 文档任务已完成', 'green');
                                 } else {
-                                    logs.addLog('文档已阅读完成，但任务点未完成', 'red');
+                                    logs.addLog('[文档] 文档已读完，但任务点未完成', 'red');
                                 }
 
                             } catch (err) {
                                 console.log(err);
                                 console.log(res.responseText);
-                                logs.addLog('解析文档内容失败', 'red');
+                                logs.addLog('[文档] 解析文档内容失败', 'red');
                             }
                             missionList['m' + item['jobid']]['running'] = false;
                             missionList['m' + item['jobid']]['done'] = true;
@@ -4067,15 +4250,11 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         onerror: function (err) {
                             console.log(err);
                             if (err.error.indexOf('@connect list') >= 0) {
-                                logs.addLog('请添加安全网址，将 【 //@connect      ' + _h +
-                                    ' 】方括号里的内容(不包括方括号)添加到脚本代码内指定位置，否则脚本无法正常运行，如图所示：', 'red');
-                                logs.addLog(
-                                    '<img src="https://pan-yz.chaoxing.com/thumbnail/0,0,0/609a8b79cbd6a91d10c207cf2b5f368d">'
-                                );
+                                logs.addLog('[系统] 请添加安全网址：把 【 //@connect      ' + _h + ' 】方括号里的内容（不含方括号）加到脚本代码里指定位置，否则脚本无法正常运行。示例图：<img src="https://pan-yz.chaoxing.com/thumbnail/0,0,0/609a8b79cbd6a91d10c207cf2b5f368d">', 'red');
                                 stop = true;
                             } else {
-                                logs.addLog('阅读文档失败', 'red');
-                                logs.addLog('错误原因：' + err.error, 'red');
+                                logs.addLog('[文档] 阅读文档失败', 'red');
+                                logs.addLog('[系统] 错误原因：' + err.error, 'red');
                             }
                             missionList['m' + item['jobid']]['running'] = false;
                             missionList['m' + item['jobid']]['done'] = true;
@@ -4085,8 +4264,8 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             },
             doWork = (item) => {
                 missionList['m' + item['jobid']]['running'] = true;
-                logs.addLog('开始刷章节测试：' + item['name']);
-                logs.addLog('您设置的答题正确率为：' + String(accuracy) + '%，只有在高于此正确率时才会提交测试', 'blue');
+                logs.addLog('[测验] 开始刷章节测试：' + item['name']);
+                logs.addLog('[测验] 答题正确率门槛为 ' + String(accuracy) + '%，高于该值才自动提交测试', 'blue');
                 _d.getElementById('workPanel').style.display = 'block';
                 _d.getElementById('frame_content').src = _p + '//' + _h + '/work/phone/work?workId=' + item['jobid']
                     .replace('work-', '') + '&courseId=' + courseId + '&clazzId=' + classId + '&knowledgeId=' +
@@ -4095,7 +4274,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 _w.top.unrivalDoneWorkId = '';
                 setInterval(function () {
                     if (_w.top.unrivalWorkInfo != '') {
-                        logs.addLog(_w.top.unrivalWorkInfo);
+                        logs.addLog(logSpec.tag(_w.top.unrivalWorkInfo, '答题'));
                         _w.top.unrivalWorkInfo = '';
                     }
                 }, 100);
@@ -4140,11 +4319,11 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
         if (jobList.length <= 0) {
             if (jumpType != 2) {
                 _w.top.jump = true;
-                logs.addLog('此页无任务，5秒后自动下一章', 'green');
+                logs.addLog('[翻章] 本页没有任务，5 秒后自动跳到下一章', 'green');
             } else if (pauseCtl.isPaused()) {
-                logs.addLog('此页无任务，已暂停：不跳转下一章，点「任务配置 → 开始/继续」恢复', 'orange');
+                logs.addLog('[翻章] 本页没有任务，已暂停：不跳转下一章，点右侧「开始/继续」恢复', 'orange');
             } else {
-                logs.addLog('此页无任务，用户设置为不跳转，脚本已结束运行，如需自动跳转，请编辑脚本代码参数', 'green');
+                logs.addLog('[翻章] 本页没有任务，翻章模式设为「不跳转」，脚本已结束运行；如需自动跳转请在面板改回「遍历」', 'green');
             }
             return;
         }
@@ -4200,11 +4379,11 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                     ` + '已跳过（' + jobType + '）：' + jobName + `
                                 </div>
                             </div>`
-                        logs.addLog('全程托管：跳过不支持的任务类型 [' + jobType + ']：' + jobName + ' —— 这类任务脚本做不了（直播要人工看、阅读要人工读），已跳过并继续', 'orange');
+                        logs.addLog('[托管] 跳过不支持的任务类型 [' + jobType + ']：' + jobName + ' —— 这类任务脚本做不了（直播要人工看、阅读要人工读），已跳过并继续', 'orange');
                         //v1.11.1：如果是阅读类任务，给一句能照做的提示
                         try {
                             if (/read|book|zt|node/i.test(String(jobType)) || /阅读|图书|材料/i.test(String(jobName))) {
-                                logs.addLog('提示：这像是阅读任务 —— 在「附加功能」里开启「阅读助手」后，打开阅读正文页即可自动逐段滚读完', 'blue');
+                                logs.addLog('[阅读] 提示：这像是阅读任务 —— 在「附加功能」里开启「阅读助手」后，打开阅读正文页即可自动逐段滚读完', 'blue');
                             }
                         } catch (e3) { }
                     } else {
@@ -4215,8 +4394,8 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                     ` + '未支持的任务（' + jobType + '）：' + jobName + `
                                 </div>
                             </div>`
-                        logs.addLog('未支持的任务类型 [' + jobType + ']：' + jobName + ' —— 脚本无法自动完成（直播要人工看、阅读要人工读）', 'red');
-                        logs.addLog('已停止自动翻章：请人工处理完这一章后，在「任务配置」点「开始/继续」', 'orange');
+                        logs.addLog('[运行] 未支持的任务类型 [' + jobType + ']：' + jobName + ' —— 脚本无法自动完成（直播要人工看、阅读要人工读）', 'red');
+                        logs.addLog('[运行] 已停止自动翻章：请人工处理完这一章后，点右侧「开始/继续」恢复', 'orange');
                         try {
                             if (typeof pauseCtl != 'undefined') pauseCtl.set(true);
                         } catch (e2) { }
@@ -5036,20 +5215,20 @@ var ctCode = parseInt(ctResult['code'], 10);
             logElement.scrollTop = logElement.scrollHeight;
         }
     };
-    logs.addLog('此页面不必保持在最前端，后台会自动进行任务', 'green');
+    logs.addLog('[系统] 本页面不必保持在最前端，后台会自动进行任务', 'green');
     setInterval(function () {
-        logs.addLog('此页面不必保持在最前端，后台会自动进行任务', 'green');
-        logs.addLog('如想禁用后台刷视频功能，请关闭脚本并重启浏览器', 'blue');
+        //v1.11.2：原来每 2 分钟重复一次「此页面不必保持在最前端」→ 只保留开头那一条
+        logs.addLog('[系统] 如想禁用后台刷视频功能，请关闭脚本并重启浏览器', 'blue');
     }, 120000)
     GM_addValueChangeListener('unrivalxxtbackgroundinfo', function (name, old_value, new_value, remote) {
         if (old_value != new_value) {
-            logs.addLog(new_value);
+            logs.addLog(logSpec.tag(new_value, '系统'));
         }
     });
     setInterval(function () {
         if (Math.round(new Date() / 1000) - parseInt(GM_getValue('unrivalBackgroundVideoEnable', '6')) >
             15) {
-            logs.addLog('超星挂机小助手可能运行异常，如页面无反应，请尝试重启脚本猫或重启浏览器(脚本猫0.9.0版本有此问题)');
+            logs.addLog('[系统] 脚本可能运行异常：如页面无反应，请尝试重启脚本猫或重启浏览器');
         }
     }, 10000);
     var loopShow = () => {

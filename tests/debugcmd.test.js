@@ -30,7 +30,7 @@ const src = fs.readFileSync(file, 'utf8');
 
 // =============================================================================
 console.log('\n=== 1) 结构断言 ===');
-t('@version 为 1.11.1-AI', src.includes('// @version      1.11.1-AI'), true);
+t('@version 为 1.11.2-AI', src.includes('// @version      1.11.2-AI'), true);
 t('存在命令通道起始标记', src.includes('//==================== v1.8.2 调试命令通道开始 ===================='), true);
 t('存在命令通道结束标记', src.includes('//==================== v1.8.2 调试命令通道结束 ===================='), true);
 t('轮询地址带 since 序号', src.includes("'/__cmd?since=' + this._seq"), true);
@@ -86,7 +86,7 @@ function makeCmd() {
             'return { c: dbgCmd, st: __st, get: function () { return { jumpType: jumpType, accuracy: accuracy, ctFailLimit: ctFailLimit }; } };'
         ].join('\n').replace('__STATE__', JSON.stringify({ paused: false, jumped: null, reloaded: false, logs: [], requests: [], opened: [] }))
     );
-    const r = factory(GM_getValue, GM_setValue, GM_xmlhttpRequest, { script: { version: '1.11.1-AI' } }, console, setTimeout, clearTimeout);
+    const r = factory(GM_getValue, GM_setValue, GM_xmlhttpRequest, { script: { version: '1.11.2-AI' } }, console, setTimeout, clearTimeout);
     // 把沙箱里的状态对象换回来（JSON 序列化会丢函数）
     r.c.__st = st;
     return r;
@@ -98,7 +98,7 @@ function makeCmd() {
     r.c.exec({ cmd: 'status' });
     const line = r.st.logs.join('\n');
     t('status 写入日志', r.st.logs.length > 0, true);
-    t('status 含版本', line.includes('版本=1.11.1-AI'), true);
+    t('status 含版本', line.includes('版本=1.11.2-AI'), true);
     t('status 含 chapterId', line.includes('chapterId=1266095428'), true);
     t('status 含暂停状态', line.includes('暂停=否'), true);
     t('status 含题库熔断计数', line.includes('题库熔断=2/3'), true);
@@ -148,9 +148,9 @@ function makeCmd() {
 // 2.5.1 v1.8.2：newversion 兼容两种传参，并自动打开安装页
 {
     const r = makeCmd();
-    r.c.exec({ cmd: 'newversion 1.11.1-AI http://127.0.0.1:8124/latest.user.js' });
+    r.c.exec({ cmd: 'newversion 1.11.2-AI http://127.0.0.1:8124/latest.user.js' });
     let line = r.st.logs.join('\n');
-    t('v1.8.2 字符串命令能解析出版本号', line.includes('发现新版本 1.11.1-AI'), true);
+    t('v1.8.2 字符串命令能解析出版本号', line.includes('发现新版本 1.11.2-AI'), true);
     t('v1.8.2 字符串命令能解析出安装地址', line.includes('http://127.0.0.1:8124/latest.user.js'), true);
     t('v1.8.2 自动打开安装页', r.st.opened.length >= 1, true);
     t('v1.8.2 打开的正是那个地址', r.st.opened[0], 'http://127.0.0.1:8124/latest.user.js');

@@ -38,9 +38,9 @@ t('继续按钮写持久化状态', src.includes('pauseCtl.set(false);'), true);
 t('持久化键为 unrivalPaused', src.includes("KEY: 'unrivalPaused'"), true);
 t('暂停时把 jumpType 压成 2', src.includes('jumpType = 2;'), true);
 t('拦截上游写 _w.jump = true', src.includes("Object.defineProperty(_w, 'jump'"), true);
-t('workAuto 开局判断暂停', src.includes("aiLog('已暂停：本次不自动作答', 'orange');"), true);
-t('workAuto 逐题之间判断暂停', src.includes("aiLog('已暂停：停止自动作答（已作答的题目保留）', 'orange');"), true);
-t('workAuto 提交前判断暂停', src.includes("aiLog('已暂停：不自动提交', 'orange');"), true);
+t('workAuto 开局判断暂停', src.includes("aiLog('[运行] 已暂停：本次不自动作答', 'orange');"), true);
+t('workAuto 逐题之间判断暂停', src.includes("aiLog('[运行] 已暂停：已停止自动作答（已作答的题目保留）', 'orange');"), true);
+t('workAuto 提交前判断暂停', src.includes("aiLog('[运行] 已暂停：本次不自动提交', 'orange');"), true);
 t('workAuto 里的暂停判断共 3 处', (src.match(/pauseCtl\.isPaused\(\)/g) || []).length >= 3, true);
 
 // =============================================================================

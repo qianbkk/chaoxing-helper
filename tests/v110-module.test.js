@@ -72,19 +72,19 @@ t('面板 HTML 里没有会破坏模板串的 ${ 或反引号', /\$\{|\`/.test(p
 // =============================================================================
 section('2) 运行控制并入任务配置 + 两个按钮');
 t('不再有独立的运行控制面板', src.includes('id="pausePanel"'), false);
-t('任务配置里有运行控制这一行', src.includes('运行控制：'), true);
+t('运行控制已从任务配置挪到右栏', src.includes('运行控制：'), false);
 t('有「开始/继续」按钮', src.includes("id='pauseStartButton'"), true);
 t('有「暂停」按钮', src.includes("id='pauseToggleButton'"), true);
 t('按钮文案是「开始/继续」', src.includes('>开始/继续</a>'), true);
 t('按钮文案是「暂停」', src.includes('>暂停</a>'), true);
 t('状态同步函数存在', src.includes('var _syncPauseUI = function () {'), true);
-t('运行中时「开始/继续」置灰', src.includes("paused ? 'btn btn-success' : 'btn btn-success disabled'"), true);
-t('暂停时「暂停」置灰', src.includes("paused ? 'btn btn-danger disabled' : 'btn btn-danger'"), true);
+t('运行中时「开始/继续」置灰', src.includes("paused ? 'btn btn-success btn-lg btn-block' : 'btn btn-success btn-lg btn-block disabled'"), true);
+t('暂停时「暂停」置灰', src.includes("paused ? 'btn btn-danger btn-sm btn-block disabled' : 'btn btn-danger btn-sm btn-block'"), true);
 t('初始化调用状态同步', src.includes('_syncPauseUI();'), true);
 t('开始按钮绑定存在', src.includes("_d.getElementById('pauseStartButton').onclick = function () {"), true);
 t('继续动作写持久化状态', src.includes('pauseCtl.set(false);'), true);
 t('暂停动作写持久化状态', src.includes('pauseCtl.set(true);'), true);
-t('提示文案指向新位置', src.includes('点「任务配置 → 开始/继续」恢复'), true);
+t('提示文案指向新位置', src.includes('点右侧「开始/继续」恢复'), true);
 t('旧的「运行控制 → 继续」文案已消失', src.includes('点「运行控制 → 继续」恢复'), false);
 
 // =============================================================================
@@ -114,7 +114,7 @@ t('有栅格样式', src.includes('.unrival-grid {'), true);
 t('栅格里的面板并排', src.includes('.unrival-grid > .panel { flex:1 1 0;'), true);
 t('有表单行样式', src.includes('.unrival-row {'), true);
 t('有字段样式（标签在上、输入框在下）', src.includes('.unrival-field {'), true);
-t('主容器放宽到 col-md-8', src.includes('<div class="col-md-8 col-md-offset-2">'), true);
+t('主容器放宽到 col-md-10', src.includes('<div class="col-md-10 col-md-offset-1">'), true);
 t('挂机小助手那一页的容器没被改', (src.match(/col-md-6 col-md-offset-3/g) || []).length, 1);
 t('AI 面板的长说明段落已去掉', src.includes('题库优先，查不到时自动降级到AI'), false);
 t('章节测验面板的链路说明已去掉', src.includes('链路：题库 → AI → 随机兜底'), false);
@@ -124,15 +124,15 @@ t('调试模式保留一行必要说明', src.includes('仅开发时使用：需
 
 // =============================================================================
 section('5) v1.10.0 运行日志按标签页会话化（结构）');
-t('存在日志会话模块', src.includes('//==================== v1.10 运行日志（按标签页会话）开始 ===================='), true);
+t('存在日志会话模块', src.includes('//==================== v1.11.2 运行日志（按标签页会话）开始 ===================='), true);
 t('旧的 v1.8.1 日志模块已不存在', src.includes('//==================== v1.8.1 运行日志持久化（跨翻章堆积）开始 ===================='), false);
 t('优先用 sessionStorage', src.includes("if (typeof sessionStorage != 'undefined' && sessionStorage) return sessionStorage;"), true);
 t('不可用时退回 GM 存储', src.includes("this._store = 'gm';"), true);
 
 // =============================================================================
 section('6) v1.11.0 全程托管模式：结构');
-t('存在托管模式模块起始标记', src.includes('//==================== v1.11 全程托管模式开始 ===================='), true);
-t('存在托管模式模块结束标记', src.includes('//==================== v1.11 全程托管模式结束 ===================='), true);
+t('存在托管模式模块起始标记', src.includes('//==================== v1.11.2 全程托管模式开始 ===================='), true);
+t('存在托管模式模块结束标记', src.includes('//==================== v1.11.2 全程托管模式结束 ===================='), true);
 t('存储键为 unrivalAutoRun', src.includes("KEY: 'unrivalAutoRun'"), true);
 t('默认关闭', src.includes("GM_getValue(this.KEY, '0') == '1'"), true);
 t('面板有托管模式勾选框', src.includes('id="unrivalAutoRun"'), true);
@@ -147,8 +147,8 @@ t('看门狗有日志限频', src.includes('LOG_EVERY: 60000'), true);
 // =============================================================================
 section('7) v1.11.0 全程托管模式：沙箱行为');
 const autoMod = sliceModule(
-    '//==================== v1.11 全程托管模式开始 ====================',
-    '//==================== v1.11 全程托管模式结束 ===================='
+    '//==================== v1.11.2 全程托管模式开始 ====================',
+    '//==================== v1.11.2 全程托管模式结束 ===================='
 );
 
 function makeAutoRun(opts) {
@@ -250,7 +250,7 @@ function makeAutoRun(opts) {
     const h = makeAutoRun({ stored: { unrivalAutoRun: '1' }, missionList: { m1: { done: true } } });
     h.a._watchTick();
     t('重试会写日志说明原因', h.logLines.length >= 1, true);
-    t('日志里点明是托管模式', h.logLines[0][0].indexOf('全程托管') >= 0, true);
+    t('日志里点明是托管模式', h.logLines[0][0].indexOf('[托管]') >= 0, true);
 }
 {
     // 限频：连续重试时不该刷屏
