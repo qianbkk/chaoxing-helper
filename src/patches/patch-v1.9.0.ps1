@@ -2,9 +2,10 @@
 # patch-v1.9.0.ps1 —— 新基线（v1.8.2-AI）→ v1.9.0-AI 增量补丁
 #
 # 【本仓库的补丁链从 v1.9.0 开始】
-#   旧仓库（qianbkk/scriptcat-chaoxing-helper，私有存档）的补丁链是
-#   「上游原版 v1.0 → v1.1 → … → v1.8.2」，每一步都作用在上游原件上。
-#   公开仓库不再随包分发上游原件（只在 reference/README.md 里留链接与致谢），
+#   早期版本的补丁链是「最初的脚本原件 v1.0 → v1.1 → … → v1.8.2」，
+#   每一步都作用在那份原件上，那条链留在私有存档仓库
+#   （qianbkk/scriptcat-chaoxing-helper）里。
+#   公开仓库不再随包分发那份原件（来源与致谢见 NOTICE.md 与 docs/来源与安全说明.md），
 #   因此这里的起点是本项目自己的产物：
 #       src/baseline/chaoxing-helper.base.js  ==  脱敏后的 v1.8.2 发布件
 #   之后的每个版本在这里加一个 patch-vX.Y.Z.ps1。

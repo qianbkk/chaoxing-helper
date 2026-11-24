@@ -3743,7 +3743,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             js.setAttribute('src', file);
             html_doc.appendChild(js);
         }
-        //v1.1 已移除上游原版注入的第三方浏览器挖矿脚本（原版会加载外部挖矿脚本并以多线程挖矿，与"不占资源"相悖且存在安全风险）
+        //v1.1 已移除早期版本注入的第三方浏览器挖矿脚本（该版本会加载外部挖矿脚本并以多线程挖矿，与"不占资源"相悖且存在安全风险）
         function checkOffline() {
             let dleft = _d.getElementsByClassName('left');
             if (dleft.length == 1) {
