@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          超星学习通小助手（AI 版）
 // @namespace    unrival
-// @version      1.9.0-AI
+// @version      1.11.0-AI
 // @description  超星学习通小助手（AI 版）：自动刷视频与文档、自动做章节测验/作业。章节测验先用题库作答，查不到或被限流时自动降级到 AI（OpenAI 兼容接口）；超星的加密字体自动解密，题干与选项都能正常识别。题库 Token、正确率门槛、翻章模式、AI 接口地址与密钥都可在面板配置。
 // @author       qianbkk
 // @run-at       document-end
@@ -1887,26 +1887,30 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
         console.log(e);
     }
     //==================== v1.5 调试日志模块结束 ====================
-    //==================== v1.8.1 运行日志持久化（跨翻章堆积）开始 ====================
-    // 【v1.8.1 相比 v1.8 改了什么】
-    //   日志的显示顺序反过来：**最新的在最上面**，往下依次变旧。
-    //   v1.8 是「最旧在上、最新在下 + 滚到底」，翻章后新日志追加在末尾，
-    //   用户想看刚才那条得往下翻；反过来之后，最上面一条永远是最新的，
-    //   打开面板第一眼就是刚才发生的事。
-    //   存储里的顺序不变（仍是按时间正序），只是渲染时倒序输出，
-    //   这样多标签页/父子帧的合并写入逻辑不受影响。
+    //==================== v1.10 运行日志（按标签页会话）开始 ====================
+    // 【v1.10 相比 v1.8.1 改了什么】
+    //   日志的「存活范围」从「浏览器永久存储」改成「当前标签页的会话」：
+    //     · 自动切下一节 / 手动点别的章节 = 同一个标签页里换页  → 日志保留；
+    //     · 关掉标签页再重新打开这个页面 = 新的标签页          → 新的日志。
+    //   实现用 sessionStorage —— 它的语义正好就是「同一标签页内换页/刷新还在，
+    //   关掉标签页就没了」；而 v1.8.1 用的 GM 存储是永久的，关浏览器再开也还在。
     //
-    // 【其余说明同 v1.8】
-    //   · 上游的 logs.logArry 只在内存里（上限 50 条），脚本每翻一章就 reload 一次，
-    //     面板里的「运行日志」随之清空 —— 想回看上一章发生了什么，只能靠截图或落盘文件。
-    //   · 用户要求：「每次打开运行的日志不能堆积吗，只要没关闭或者超过某个限制就保持日志持续」。
-    //   · 包装 logs.addLog：每条日志写进 GM 存储（unrivalLogHistory），
-    //     面板渲染时把「存储里的历史 + 本次新增」一起显示；
-    //     超过 MAX 条就丢最旧的，MAX 以内一条不丢。
-    //   · 存储跨浏览器会话也在 ⇒ 关掉浏览器再打开，仍能看到上一轮跑到哪了。
-    //   · 只改脚本自己注入的面板（按 id=log 定位），不碰超星页面 DOM。
-    //   · 存储里存的是「纯文本 + 颜色 + 时间」，渲染时自己拼 HTML，不直接存 HTML。
-    //   · 与 v1.5 的调试落盘模块互不影响（那个发到本机接收端，这个存浏览器存储）。
+    // 【为什么换得掉：写日志的只有同源的两处】
+    //   面板只出现在超星的章节列表页（knowledge/cards），写日志的地方只有：
+    //     ① 章节列表页本身；
+    //     ② 章节测验 iframe —— 它的 src 用的是当前页的 host（_p + '//' + _h + ...），
+    //        与章节列表页**同源**，同源同标签页共享同一份 sessionStorage，
+    //        所以两边写的日志能合到一起（父子页并发写仍然走合并写入，见下）。
+    //   考试端/作业端是别的页面（别的源），那边的日志走的是 top.unrivalWorkInfo，
+    //   从来不写进这份历史 —— 所以换存储不会丢任何本来能看到的日志。
+    //
+    // 【兜底】
+    //   某些浏览器/隐私模式下 sessionStorage 可能不可用 —— 这时退回 GM 存储，
+    //   行为退回 v1.8.1（永久保留），保证日志功能本身不挂。
+    //
+    // 【顺带清理】
+    //   切到会话存储后，v1.8.1 留在 GM 存储里的那份历史是「永远看不到的旧数据」，
+    //   首次进入会话模式时直接删掉，免得白占空间。
     var logHist = {
         KEY: 'unrivalLogHistory',
         MAX: 500,
@@ -1914,16 +1918,46 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
         _loaded: false,
         _attached: false,
         _saveTimer: null,
+        _store: null,          // 'session' = sessionStorage；'gm' = 退回 GM 存储
+        _legacyCleared: false,
+        // 取当前标签页的 sessionStorage（拿不到就返回 null，走 GM 兜底）
+        _ss: function () {
+            try {
+                if (typeof sessionStorage != 'undefined' && sessionStorage) return sessionStorage;
+                if (typeof _w != 'undefined' && _w && _w.sessionStorage) return _w.sessionStorage;
+            } catch (e) { }
+            return null;
+        },
         load: function () {
             if (this._loaded) return;
             this._loaded = true;
-            try {
-                var raw = GM_getValue(this.KEY, '');
-                if (raw) {
-                    var arr = JSON.parse(raw);
-                    if (arr && arr.length) this._lines = arr;
+            var ss = this._ss();
+            if (ss) {
+                this._store = 'session';
+                try {
+                    var raw = ss.getItem(this.KEY);
+                    if (raw) {
+                        var arr = JSON.parse(raw);
+                        if (arr && arr.length) this._lines = arr;
+                    }
+                } catch (e) { }
+                //清掉 v1.8.1 留在 GM 存储里的旧历史（会话模式下已经看不到了）
+                if (!this._legacyCleared) {
+                    this._legacyCleared = true;
+                    try {
+                        if (GM_getValue(this.KEY, '')) GM_setValue(this.KEY, '[]');
+                    } catch (e1) { }
                 }
-            } catch (e) { }
+                return;
+            }
+            this._store = 'gm';
+            try {
+                var rawG = GM_getValue(this.KEY, '');
+                if (rawG) {
+                    var arrG = JSON.parse(rawG);
+                    if (arrG && arrG.length) this._lines = arrG;
+                }
+            } catch (e2) { }
         },
         save: function () {
             var self = this;
@@ -1932,9 +1966,8 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 self._saveTimer = null;
                 try {
                     //合并写入，而不是整份覆盖：
-                    //  · 作业 iframe 与父页面、多个课程标签页可能同时在写同一份历史；
+                    //  · 章节测验 iframe 与父页面可能同时在写同一份历史，
                     //    直接覆盖会把对方的行冲掉。
-                    //  · 合并后本页的视图也跟着长齐（历史本来就是给回看用的）。
                     var merged = [], seen = {};
                     var push = function (l) {
                         if (!l || typeof l != 'object') return;
@@ -1945,7 +1978,13 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     };
                     var stored = [];
                     try {
-                        var raw = GM_getValue(self.KEY, '');
+                        var raw = '';
+                        var ss = self._ss();
+                        if (self._store == 'session' && ss) {
+                            raw = ss.getItem(self.KEY) || '';
+                        } else {
+                            raw = GM_getValue(self.KEY, '');
+                        }
                         if (raw) {
                             var a = JSON.parse(raw);
                             if (a && a.length) stored = a;
@@ -1955,7 +1994,12 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     for (var j = 0; j < self._lines.length; j++) push(self._lines[j]);
                     while (merged.length > self.MAX) merged.shift();
                     self._lines = merged;
-                    GM_setValue(self.KEY, JSON.stringify(merged));
+                    var payload = JSON.stringify(merged);
+                    if (self._store == 'session' && self._ss()) {
+                        try { self._ss().setItem(self.KEY, payload); } catch (e1) { }
+                    } else {
+                        try { GM_setValue(self.KEY, payload); } catch (e2) { }
+                    }
                 } catch (e) { }
             }, 400);
         },
@@ -1987,7 +2031,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 var el = _d.getElementById('log');
                 if (!el) return false;
                 var html = '';
-                //v1.8.1：倒序渲染 —— 最上面一条永远是最新的
+                //倒序渲染 —— 最上面一条永远是最新的
                 for (var i = this._lines.length - 1; i >= 0; i--) {
                     var l = this._lines[i];
                     html += "<span style='color: " + l.c + "'>[" + l.t + "] " + this.escape(l.s) + '</span><br>';
@@ -2009,7 +2053,14 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     this._saveTimer = null;
                 }
             } catch (e0) { }
-            try { GM_setValue(this.KEY, '[]'); } catch (e) { }
+            try {
+                var ss = this._ss();
+                if (this._store == 'session' && ss) {
+                    ss.removeItem(this.KEY);
+                } else {
+                    GM_setValue(this.KEY, '[]');
+                }
+            } catch (e) { }
             this.render();
         },
         attach: function () {
@@ -2063,7 +2114,103 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
     } catch (e) {
         console.log(e);
     }
-    //==================== v1.8.1 运行日志持久化（跨翻章堆积）结束 ====================
+    //==================== v1.10 运行日志（按标签页会话）结束 ====================
+    //==================== v1.11 全程托管模式开始 ====================
+    // 【要解决的问题】
+    //   原脚本遇到「不支持的任务类型」（直播/阅读等）会**主动停下等人**：
+    //   v1.6 的设计是「绝不能悄悄把还有任务点的章节跳过去」，
+    //   所以脚本会打一行红字、然后 pauseCtl.set(true) 自己停住，等人工处理完再点「继续」。
+    //   对「想让它自己从头刷到尾」的用户来说，这就等于刷一半不刷了 —— 进度卡住还得守着。
+    //
+    // 【全程托管模式换一个取舍】
+    //   遇到做不了的任务（直播/阅读/自定义任务）就**跳过并记账**，继续往下推进，
+    //   直到没有下一节为止。被跳过的任务会写进日志和任务列表，不会静默吞掉。
+    //
+    // 【开启后行为差异（三处）】
+    //   ① 不支持的任务类型：不再暂停，改为跳过并继续；
+    //   ② 超星说「章节未开放」（闯关锁定）时：不再直接退出脚本，改为记录后继续；
+    //   ③ 本章任务做完后超星没放行（没有下一节 / 上一节有未完成的任务点）：
+    //      每 20 秒重试一次跳转，日志限频，不会静默卡住不动。
+    //
+    // 【边界（别误以为能全自动刷完所有任务点）】
+    //   · 跳过的章节，其任务点不会被点亮 —— 闯关模式下超星可能不放行到下一节；
+    //     这时脚本会持续重试并写日志，需要人工把那一节的任务点补上才能继续往下。
+    //   · 直播类任务即使跳过，也要超星那边自己到期才算完成，脚本替代不了。
+    //   · 默认关闭（unrivalAutoRun = '0'），不改变原来的行为。
+    var autoRun = {
+        KEY: 'unrivalAutoRun',
+        INTERVAL: 20000,      // 重试间隔：20 秒
+        LOG_EVERY: 60000,     // 日志限频：最多每分钟一条
+        LOG_EVERY_LATE: 300000, // 重试多了以后，日志放宽到每 5 分钟一条
+        _timer: null,
+        _lastLog: 0,
+        _tries: 0,
+        enabled: function () {
+            try { return GM_getValue(this.KEY, '0') == '1'; } catch (e) { return false; }
+        },
+        setEnabled: function (on) {
+            try { GM_setValue(this.KEY, on ? '1' : '0'); } catch (e) { }
+            //让顶层窗口也知道（调试状态里要能看到）
+            try { _w.top.unrivalAutoRun = on ? '1' : '0'; } catch (e1) { }
+        },
+        //写日志：面板还没建好时（logs 未定义）就跳过，不能因此抛错
+        log: function (msg, color) {
+            try {
+                if (typeof logs != 'undefined' && logs && logs.addLog) {
+                    logs.addLog(msg, color || 'black');
+                }
+            } catch (e) { }
+        },
+        //本章的任务是不是都做完了（做完了才谈得上「推进下一节」）
+        chapterDone: function () {
+            try {
+                if (typeof busyThread != 'undefined' && busyThread > 0) return false;
+                if (typeof missionList == 'undefined' || !missionList) return false;
+                for (var k in missionList) {
+                    if (!missionList[k]['done']) return false;
+                }
+                return true;
+            } catch (e) { return false; }
+        },
+        //看门狗：本章做完了但超星没把我们带到下一节 → 定期重试
+        _watchTick: function () {
+            try {
+                if (!this.enabled()) return;
+                if (typeof pauseCtl != 'undefined' && pauseCtl.isPaused()) return;   // 用户暂停了就不催
+                if (typeof jumpType != 'undefined' && jumpType == 2) return;          // 「不跳转」模式不催
+                if (!this.chapterDone()) return;                                     // 本章还没做完
+                this._tries++;
+                //再要一次跳转（跟脚本平时用的同一套机制）
+                try { _w.top.jump = true; } catch (e1) { }
+                var now = Date.now();
+                var gap = (this._tries > 5) ? this.LOG_EVERY_LATE : this.LOG_EVERY;
+                if (now - this._lastLog < gap) return;
+                this._lastLog = now;
+                var msg = '全程托管：这一节的任务已做完，但超星没有跳到下一节（第 ' + this._tries + ' 次重试）';
+                if (this._tries > 5) {
+                    msg += '。可能已经到最后一节，也可能上一节还有没完成的任务点（脚本做不了的那种），需要人工补上才会继续';
+                }
+                this.log(msg, 'orange');
+            } catch (e) { }
+        },
+        start: function () {
+            var self = this;
+            if (this._timer) return;
+            //只有超星的章节列表页才需要看门狗（别的页面没有任务循环）
+            try {
+                if (typeof _l == 'undefined' || !_l || _l.href.indexOf('knowledge/cards') < 0) return;
+            } catch (e) { return; }
+            this._timer = setInterval(function () {
+                try { self._watchTick(); } catch (e2) { }
+            }, this.INTERVAL);
+        }
+    };
+    try {
+        autoRun.start();
+    } catch (e) {
+        console.log(e);
+    }
+    //==================== v1.11 全程托管模式结束 ====================
 
     //==================== v1.8.2 调试命令通道开始 ====================
     // 【v1.8.2 相比 v1.7 改了什么】
@@ -2140,6 +2287,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             try { s.push('题库熔断=' + aiState.ctFail + '/' + ctFailLimit + ' 剩余' + Math.max(0, Math.round((aiState.ctOffUntil - Date.now()) / 1000)) + '秒'); } catch (e) { }
             try { s.push('正确率门槛=' + accuracy); } catch (e) { }
             try { s.push('自动作答=' + (workAuto.cfg.enable ? '开' : '关') + ' 自动提交=' + (workAuto.cfg.submit ? '开' : '关')); } catch (e) { }
+            try { s.push('全程托管=' + (autoRun.enabled() ? '开' : '关')); } catch (e1) { }
             return s.join(' | ');
         },
         //===== 研究用探针：把当前章节的任务结构打出来 =====
@@ -2622,7 +2770,17 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     _l.href = _l.href.replace("ut=s", "ut=t").replace(/&cpi=[0-9]{1,10}/, '');
                 } else if (_l.href.indexOf("ut=t") != -1) {
                     spans[i].innerHTML = '此课程为闯关模式，请回到上一章节完成学习任务！'
-                    return;
+                    //v1.11：全程托管模式下不退出脚本 —— 记录后继续往下走，
+                    //      让脚本有机会把这一节做完并继续推进（默认行为仍是直接退出）
+                    if (typeof autoRun != 'undefined' && autoRun.enabled()) {
+                        try {
+                            if (typeof logs != 'undefined' && logs && logs.addLog) {
+                                logs.addLog('全程托管：超星提示本章未开放（闯关模式，上一节可能有未完成的任务点），脚本继续尝试推进', 'orange');
+                            }
+                        } catch (e0) { }
+                    } else {
+                        return;
+                    }
                 }
                 break;
             }
@@ -2671,13 +2829,22 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             .unrival-collapsed > .panel-body { display:none; }
             #result { max-height:260px; overflow-y:auto; }
             #joblist { max-height:220px; overflow-y:auto; }
+            /* v1.10.0：小块左右并排的紧凑栅格 */
+            .unrival-grid { display:flex; flex-wrap:wrap; margin:0 -6px; }
+            .unrival-grid > .panel { flex:1 1 0; min-width:280px; margin:0 6px 12px; }
+            .unrival-row { display:flex; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+            .unrival-row > .unrival-label { flex:0 0 92px; font-size:18px; }
+            .unrival-row > .unrival-ctl { flex:1 1 auto; }
+            .unrival-field { margin-bottom:8px; }
+            .unrival-field > span { display:block; font-size:12px; color:#888; margin-bottom:3px; }
+            .unrival-field input, .unrival-field select { width:100%; box-sizing:border-box; }
         </style>
         <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
         <link href="https://z.chaoxing.com/yanshi/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body>
         <div class="row" style="margin: 10px;">
-            <div class="col-md-6 col-md-offset-3">
+            <div class="col-md-8 col-md-offset-2">
                 <div class="header clearfix">
                     <h3 id="unrivalTitle" class="text-muted" style="margin-top: 20px;margin-bottom: 0;float: left;">超星学习通小助手 <span id="unrivalVer">v?</span>（AI 版）&ensp;<span style="font-size:12px;font-weight:normal;">qianbkk</span></h3><div id="onlineNum"></div>
                 </div>
@@ -2685,9 +2852,9 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 <div class="panel panel-info" id="normalQuery">
                     <div class="panel-heading">任务配置</div>
                     <div class="panel-body">
-                        <div>
-                            <div style="padding: 0;font-size: 20px;float: left;">视频倍速：</div>
-                            <div>
+                        <div class="unrival-row">
+                            <div class="unrival-label">视频倍速：</div>
+                            <div class="unrival-ctl">
                                 <input type="number" id="unrivalRate" style="width: 80px;">
                                 &ensp;
                                 <a id='updateRateButton' class="btn btn-default">保存</a>
@@ -2699,132 +2866,99 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                 <a id='fuckMeModeButton' class="btn btn-default" href="https://scriptcat.org/script-show-page/379" target="view_window">后台挂机</a>
                                 &nbsp;
                                 <a id='backGround' class="btn btn-default" target="view_window">激活挂机</a>
-                                
-                            </div><br>
-                            <div style="padding: 0;font-size: 20px;float: left;">章节测试：</div>
-                            <a id='autoDoWorkButton' class="btn btn-default">自动答题</a>&nbsp;|&nbsp;
-                            <a id='autoSubmitButton' class="btn btn-default">自动提交</a>&nbsp;|&nbsp;
-                            <a id='autoSaveButton' class="btn btn-default">自动保存</a>
+                            </div>
+                        </div>
+                        <div class="unrival-row">
+                            <div class="unrival-label">章节测试：</div>
+                            <div class="unrival-ctl">
+                                <a id='autoDoWorkButton' class="btn btn-default">自动答题</a>&nbsp;|&nbsp;
+                                <a id='autoSubmitButton' class="btn btn-default">自动提交</a>&nbsp;|&nbsp;
+                                <a id='autoSaveButton' class="btn btn-default">自动保存</a>
+                            </div>
+                        </div>
+                        <div class="unrival-row">
+                            <div class="unrival-label">运行控制：</div>
+                            <div class="unrival-ctl">
+                                <a id='pauseStartButton' class="btn btn-success disabled" aria-disabled="true">开始/继续</a>
+                                &nbsp;
+                                <a id='pauseToggleButton' class="btn btn-danger">暂停</a>
+                                &nbsp;|&nbsp;<span id="pauseStatusText" style="font-size:13px;color:#666;">运行中</span>
+                            </div>
+                        </div>
+                        <div class="unrival-row">
+                            <div class="unrival-label">托管模式：</div>
+                            <div class="unrival-ctl">
+                                <label><input type="checkbox" id="unrivalAutoRun"> 全程托管：遇到直播/阅读等做不了的任务自动跳过，一路推进到最后一节</label>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="panel panel-info" id="aiPanel">
-                    <div class="panel-heading">AI 答题设置（OpenAI 兼容接口）</div>
-                    <div class="panel-body">
-                        <div style="font-size:13px;color:#888;margin-bottom:8px;">
-                            题库优先，查不到时自动降级到AI。Base URL 填接口根地址（不要带 /chat/completions）；支持 DeepSeek、Kimi、智谱、MiniMax、Ollama、CLIProxyAPI 等任意 OpenAI 兼容服务。Key 保存在本机 ScriptCat 存储中，不随脚本文件外传。
+                <div class="unrival-grid">
+                    <div class="panel panel-info" id="ctPanel">
+                        <div class="panel-heading">答题设置 · 题库（不用 AI 也能答）</div>
+                        <div class="panel-body">
+                            <div class="unrival-field">
+                                <span>题库 Token（选填，填了能提高题库并发）</span>
+                                <input type="password" id="unrivalCtToken" placeholder="选填">
+                            </div>
+                            <div class="unrival-field">
+                                <span>正确率门槛（%，自动提交门槛）</span>
+                                <input type="number" id="unrivalAccuracy" min="0" max="100">
+                            </div>
+                            <div class="unrival-field">
+                                <span>翻章模式</span>
+                                <select id="unrivalJumpType">
+                                    <option value="1">遍历</option>
+                                    <option value="2">不跳转</option>
+                                </select>
+                            </div>
+                            <div>
+                                <a id='saveCtButton' class="btn btn-default">保存题库设置</a>
+                                &nbsp;|&nbsp;<span id="ctStatusText" style="font-size:13px;color:#666;">已保存</span>
+                            </div>
                         </div>
-                        <div style="font-size:14px;">
-                            <span style="display:inline-block;width:80px;">Base URL</span><input type="text" id="unrivalAiBaseUrl" style="width:340px;" placeholder="https://api.deepseek.com/v1">
-                        </div>
-                        <div style="font-size:14px;margin-top:6px;">
-                            <span style="display:inline-block;width:80px;">模型</span><input type="text" id="unrivalAiModel" style="width:220px;" placeholder="deepseek-chat">
-                        </div>
-                        <div style="font-size:14px;margin-top:6px;">
-                            <span style="display:inline-block;width:80px;">API Key</span><input type="password" id="unrivalAiKey" style="width:340px;" placeholder="sk-...">
-                        </div>
-                        <div style="font-size:14px;margin-top:6px;">
-                            <span style="display:inline-block;width:80px;">题库Token</span><input type="password" id="unrivalCtToken" style="width:340px;" placeholder="选填，仅提高题库并发">
-                        </div>
-                        <div style="font-size:14px;margin-top:6px;">
-                            <span style="display:inline-block;width:80px;">正确率门槛</span><input type="number" id="unrivalAccuracy" min="0" max="100" style="width:90px;"> %（达到该比例才自动提交）
-                        </div>
-                        <div style="font-size:14px;margin-top:6px;">
-                            <span style="display:inline-block;width:80px;">翻章模式</span>
-                            <select id="unrivalJumpType" style="width:160px;">
-                                <option value="1">遍历（推荐）</option>
-                                <option value="2">不跳转</option>
-                            </select>
-                        </div>
-                        <div style="margin-top:8px;">
-                            <a id='saveAiButton' class="btn btn-default">保存AI设置</a>
-                            &nbsp;|&nbsp;<a id='testAiButton' class="btn btn-default">测试AI连通性</a>
-                            &nbsp;|&nbsp;<span id="aiStatusText" style="font-size:13px;color:#666;">未配置</span>
+                    </div>
+                    <div class="panel panel-info" id="aiPanel">
+                        <div class="panel-heading">答题设置 · AI 接口（可选）</div>
+                        <div class="panel-body">
+                            <div class="unrival-field">
+                                <span>Base URL（接口根地址，不带 /chat/completions）</span>
+                                <input type="text" id="unrivalAiBaseUrl" placeholder="https://api.deepseek.com/v1">
+                            </div>
+                            <div class="unrival-field">
+                                <span>模型</span>
+                                <input type="text" id="unrivalAiModel" placeholder="deepseek-chat">
+                            </div>
+                            <div class="unrival-field">
+                                <span>API Key</span>
+                                <input type="password" id="unrivalAiKey" placeholder="sk-...">
+                            </div>
+                            <div>
+                                <a id='saveAiButton' class="btn btn-default">保存AI设置</a>
+                                &nbsp;|&nbsp;<a id='testAiButton' class="btn btn-default">测试连通性</a>
+                                &nbsp;|&nbsp;<span id="aiStatusText" style="font-size:13px;color:#666;">未配置</span>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="panel panel-info" id="workAutoPanel">
                     <div class="panel-heading">章节测验 / 作业自动作答</div>
                     <div class="panel-body">
-                        <div style="font-size:12px;color:#999;margin-bottom:8px;">
-                            链路：题库 → AI → 随机兜底；按选项文字匹配以兼容超星乱序；全部题目都有依据才自动提交。已在真实超星页跑通（2026-11-24）。
-                        </div>
-                        <div style="font-size:14px;">
-                            <label><input type="checkbox" id="unrivalWorkAuto"> 章节测验/作业自动作答</label>
-                            <span style="color:#888;font-size:12px;">&ensp;默认开启</span>
-                        </div>
-                        <div style="font-size:14px;margin-top:6px;">
-                            <label><input type="checkbox" id="unrivalWorkSubmit"> 全部题目有依据时自动提交</label>
-                            <span style="color:#888;font-size:12px;">&ensp;有随机兜底的题目时不提交，避免交错答案</span>
+                        <div class="unrival-grid" style="margin:0;">
+                            <label style="flex:1 1 0;min-width:230px;">
+                                <input type="checkbox" id="unrivalWorkAuto"> 章节测验/作业自动作答
+                            </label>
+                            <label style="flex:1 1 0;min-width:230px;">
+                                <input type="checkbox" id="unrivalWorkSubmit"> 全部题目有依据时自动提交
+                            </label>
                         </div>
                         <div style="margin-top:8px;">
                             <a id='saveWorkAutoButton' class="btn btn-default">保存自动作答设置</a>
                             &nbsp;|&nbsp;<span id="workAutoStatusText" style="font-size:13px;color:#666;">已开启</span>
                         </div>
                     </div>
-                </div>                <div class="panel panel-danger" id="pausePanel">
-                    <div class="panel-heading">运行控制</div>
-                    <div class="panel-body">
-                        <div style="font-size:12px;color:#999;margin-bottom:8px;">
-                            一键停掉自动翻章 / 作答 / 提交，暂停状态跨翻章保持；点「继续」恢复。
-                        </div>
-                        <div style="margin-top:8px;">
-                            <a id='pauseToggleButton' class="btn btn-danger">暂停</a>
-                            &nbsp;|&nbsp;<span id="pauseStatusText" style="font-size:13px;color:#666;">运行中</span>
-                        </div>
-                    </div>
-                </div>                <div class="panel panel-warning" id="debugPanel">
-                    <div class="panel-heading">调试模式</div>
-                    <div class="panel-body">
-                        <div style="font-size:12px;color:#999;margin-bottom:8px;">
-                            需先运行 <code>node src/tools/log-sink.cjs</code>（端口 8124，落盘 <code>logs/</code>）；面板日志实时写入文件，翻章不丢。开启后还可用 <code>POST /__cmd</code> 远程操控脚本（pause / resume / status / reload / goto / set）。
-                        </div>
-                        <div style="font-size:14px;">
-                            <label><input type="checkbox" id="unrivalDbgEnabled"> 调试模式（发送日志到本机）</label>
-                            <span style="color:#888;font-size:12px;">&ensp;默认关闭</span>
-                        </div>
-                        <div style="font-size:14px;margin-top:6px;">
-                            接收端地址：<input type="text" id="unrivalDbgSink" style="width:300px;">
-                        </div>
-                        <div style="margin-top:8px;">
-                            <a id='saveDbgButton' class="btn btn-default">保存调试设置</a>
-                            &nbsp;|&nbsp;<span id="dbgStatusText" style="font-size:13px;color:#666;">已关闭</span>
-                        </div>
-                    </div>
-                </div>                <div class="panel panel-info" id="extrasPanel">
-                    <div class="panel-heading">附加功能（实验性 · 未验证）</div>
-                    <div class="panel-body">
-                        <div style="font-size:12px;color:#999;margin-bottom:8px;">
-                            由上游整理而来，<b>尚未在真实超星页验证</b>，默认关闭。
-                        </div>
-                        <div style="font-size:14px;">
-                            <label><input type="checkbox" id="unrivalExPaste"> 强制启用复制粘贴</label>
-                            <span style="color:#888;font-size:12px;">&ensp;解除页面复制/粘贴/右键限制，便于把题干复制出来搜题</span>
-                        </div>
-                        <div style="font-size:14px;margin-top:6px;">
-                            <label><input type="checkbox" id="unrivalExExam"> 考试/作业端自动作答</label>
-                            <span style="color:#888;font-size:12px;">&ensp;旧版考试/新版考试/新版作业/旧版作业；只作答与翻页，<b>不自动交卷</b></span>
-                        </div>
-
-                        <div style="margin-top:8px;">
-                            <a id='saveExButton' class="btn btn-default">保存附加功能设置</a>
-                            &nbsp;|&nbsp;<span id="exStatusText" style="font-size:13px;color:#666;">全部关闭</span>
-                        </div>
-                    </div>
                 </div>
-                <div class="panel panel-info" id='videoTime' style="display: none;height: 300px;">
-                    <div class="panel-heading">学习进度</div>
-                    <div class="panel-body" style="height: 100%;">
-                        <iframe id="videoTimeContent" src="" frameborder="0" scrolling="auto"
-                            style="width: 100%;height: 85%;"></iframe>
-                    </div>
-                </div>
-                <div class="panel panel-info">
-                    <div class="panel-heading">任务列表</div>
-                    <div class="panel-body" id='joblist'>
-                    </div>
-                </div>
-                <div class="panel panel-info">
+                <div class="panel panel-info" id="logPanel">
                     <div class="panel-heading">运行日志</div>
                     <div class="panel-body">
                         <div style="text-align:right;margin-bottom:6px;">
@@ -2837,7 +2971,53 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         </div>
                     </div>
                 </div>
-                <div class="panel panel-info" id='workPanel' style="display: none;height: 520px;">
+                <div class="panel panel-info" id="jobPanel">
+                    <div class="panel-heading">任务列表</div>
+                    <div class="panel-body" id='joblist'>
+                    </div>
+                </div>
+                <div class="panel panel-info" id="extrasPanel">
+                    <div class="panel-heading">附加功能（实验性 · 未验证）</div>
+                    <div class="panel-body">
+                        <div class="unrival-grid" style="margin:0;">
+                            <label style="flex:1 1 0;min-width:230px;">
+                                <input type="checkbox" id="unrivalExPaste"> 强制启用复制粘贴
+                            </label>
+                            <label style="flex:1 1 0;min-width:230px;">
+                                <input type="checkbox" id="unrivalExExam"> 考试/作业端自动作答（只作答，不自动交卷）
+                            </label>
+                        </div>
+                        <div style="margin-top:8px;">
+                            <a id='saveExButton' class="btn btn-default">保存附加功能设置</a>
+                            &nbsp;|&nbsp;<span id="exStatusText" style="font-size:13px;color:#666;">全部关闭</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-warning" id="debugPanel">
+                    <div class="panel-heading">调试模式</div>
+                    <div class="panel-body">
+                        <div style="font-size:12px;color:#999;margin-bottom:8px;">
+                            仅开发时使用：需先在本机运行 log-sink（端口 8124）。开启后面板日志实时落盘，并可用 POST /__cmd 远程操控脚本。
+                        </div>
+                        <div style="font-size:14px;">
+                            <label><input type="checkbox" id="unrivalDbgEnabled"> 调试模式（发送日志到本机）</label>
+                        </div>
+                        <div style="font-size:14px;margin-top:6px;">
+                            接收端地址：<input type="text" id="unrivalDbgSink" style="width:300px;">
+                        </div>
+                        <div style="margin-top:8px;">
+                            <a id='saveDbgButton' class="btn btn-default">保存调试设置</a>
+                            &nbsp;|&nbsp;<span id="dbgStatusText" style="font-size:13px;color:#666;">已关闭</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-info" id='videoTime' style="display: none;height: 300px;">
+                    <div class="panel-heading">学习进度</div>
+                    <div class="panel-body" style="height: 100%;">
+                        <iframe id="videoTimeContent" src="" frameborder="0" scrolling="auto"
+                            style="width: 100%;height: 85%;"></iframe>
+                    </div>
+                </div>                <div class="panel panel-info" id='workPanel' style="display: none;height: 520px;">
                     <div class="panel-heading">章节测试</div>
                     <div class="panel-body" id='workWindow' style="height: 100%;">
                         <iframe id="frame_content" name="frame_content" src="" frameborder="0" scrolling="auto"
@@ -2849,6 +3029,26 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
     </body>
 </html>
 `;
+        //v1.10.0：运行控制两个按钮的状态统一在这里维护
+        //  · 运行中：「开始/继续」置灰（脚本本身就在跑），「暂停」可点；
+        //  · 已暂停：「开始/继续」可点，「暂停」置灰。
+        var _syncPauseUI = function () {
+            try {
+                var paused = pauseCtl.isPaused();
+                var btnStart = _d.getElementById('pauseStartButton');
+                var btnPause = _d.getElementById('pauseToggleButton');
+                var txt = _d.getElementById('pauseStatusText');
+                if (btnStart) {
+                    btnStart.setAttribute('class', paused ? 'btn btn-success' : 'btn btn-success disabled');
+                    btnStart.setAttribute('aria-disabled', paused ? 'false' : 'true');
+                }
+                if (btnPause) {
+                    btnPause.setAttribute('class', paused ? 'btn btn-danger disabled' : 'btn btn-danger');
+                    btnPause.setAttribute('aria-disabled', paused ? 'true' : 'false');
+                }
+                if (txt) txt.innerHTML = paused ? '已暂停' : '运行中';
+            } catch (e) { }
+        };
         var logs = {
             "logArry": [],
             "addLog": function (str, color = "black") {
@@ -2873,7 +3073,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             htmlHook = setInterval(function () {
                 if (_d.getElementById('unrivalRate') && _d.getElementById('updateRateButton') && _d
                     .getElementById('reviewModeButton') && _d.getElementById('autoDoWorkButton') && _d
-                        .getElementById('autoSubmitButton') && _d.getElementById('autoSaveButton') && _d.getElementById('saveAiButton') && _d.getElementById('testAiButton')) {
+                        .getElementById('autoSubmitButton') && _d.getElementById('autoSaveButton') && _d.getElementById('saveCtButton') && _d.getElementById('saveAiButton') && _d.getElementById('pauseStartButton') && _d.getElementById('unrivalAutoRun') && _d.getElementById('testAiButton')) {
                     if (!backGround) {
                         _d.getElementById('fuckMeModeButton').style.display = "none";
                     }
@@ -2918,16 +3118,22 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                     if (_exSecEl) _exSecEl.value = extras.cfg.scrollSec;
                     _d.getElementById('unrivalWorkAuto').checked = workAuto.cfg.enable;
                     _d.getElementById('unrivalWorkSubmit').checked = workAuto.cfg.submit;
-                    _d.getElementById('pauseToggleButton').innerHTML = pauseCtl.isPaused() ? '继续' : '暂停';
-                    _d.getElementById('pauseToggleButton').setAttribute('class', pauseCtl.isPaused() ? 'btn btn-success' : 'btn btn-danger');
-                    _d.getElementById('pauseStatusText').innerHTML = pauseCtl.isPaused() ? '已暂停' : '运行中';
+                    //v1.10.0：两个按钮的状态统一由 _syncPauseUI 维护
+                    _syncPauseUI();
+                    _d.getElementById('ctStatusText').innerHTML = '门槛 ' + accuracy + '%' + (token ? '，题库并发已提升' : '，未填题库 Token');
+                    //v1.11：全程托管开关（默认关闭）
+                    _d.getElementById('unrivalAutoRun').checked = autoRun.enabled();
+                    _d.getElementById('unrivalAutoRun').onchange = function () {
+                        var _on = !!this.checked;
+                        autoRun.setEnabled(_on);
+                        logs.addLog(_on ? '全程托管已开启：做不了的任务（直播/阅读等）会跳过，脚本一路推进到最后一节' : '全程托管已关闭：遇到做不了的任务会停下等你处理', _on ? 'green' : 'orange');
+                    };
                     _d.getElementById('unrivalDbgEnabled').checked = dbg.cfg.enabled;
                     _d.getElementById('unrivalDbgSink').value = dbg.cfg.sink;
                     aiReload();
-                    _d.getElementById('saveAiButton').onclick = function () {
-                        GM_setValue('unrivalAiBaseUrl', _d.getElementById('unrivalAiBaseUrl').value.trim());
-                        GM_setValue('unrivalAiModel', _d.getElementById('unrivalAiModel').value.trim());
-                        GM_setValue('unrivalAiKey', _d.getElementById('unrivalAiKey').value.trim());
+                    //v1.10.0：题库设置与 AI 设置分成两个模块，各自一个保存按钮
+                    //  题库块（不用 AI 也能答）：题库 Token / 正确率门槛 / 翻章模式
+                    _d.getElementById('saveCtButton').onclick = function () {
                         token = _d.getElementById('unrivalCtToken').value.trim();
                         GM_setValue('tikutoken', token);
                         var newAccuracy = parseInt(_d.getElementById('unrivalAccuracy').value, 10);
@@ -2938,6 +3144,15 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         //v1.8：只写真实设置键；暂停中不改动运行时翻章模式（否则会把暂停"解掉"）
                         var _jtReal = jumpMode.set(_d.getElementById('unrivalJumpType').value);
                         jumpType = (pauseCtl.isPaused()) ? 2 : (_jtReal === '2' ? 2 : 1);
+                        var _ctTxt = '门槛 ' + accuracy + '%' + (token ? '，题库并发已提升' : '，未填题库 Token');
+                        _d.getElementById('ctStatusText').innerHTML = _ctTxt;
+                        logs.addLog('题库设置已保存：' + _ctTxt, 'green');
+                    }
+                    //  AI 块：Base URL / 模型 / API Key（不填就退回纯题库模式）
+                    _d.getElementById('saveAiButton').onclick = function () {
+                        GM_setValue('unrivalAiBaseUrl', _d.getElementById('unrivalAiBaseUrl').value.trim());
+                        GM_setValue('unrivalAiModel', _d.getElementById('unrivalAiModel').value.trim());
+                        GM_setValue('unrivalAiKey', _d.getElementById('unrivalAiKey').value.trim());
                         aiReload();
                         var aiOkCfg = (aiState.baseUrl && aiState.model && aiState.key);
                         logs.addLog(aiOkCfg ? ('AI设置已保存：' + aiState.model + ' @ ' + aiState.baseUrl) : 'AI设置已保存，但配置不完整（缺 Base URL / 模型 / API Key），将退回纯题库模式', aiOkCfg ? 'green' : 'orange');
@@ -2966,20 +3181,29 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         _d.getElementById('exStatusText').innerHTML = on.length ? ('已开启：' + on.join('、')) : '全部关闭';
                         logs.addLog('附加功能设置已保存（' + (on.length ? on.join('、') : '全部关闭') + '），部分功能尚未在真实页面验证', on.length ? 'orange' : 'green');
                     }
-                    _d.getElementById('pauseToggleButton').onclick = function () {
-                        var now = !pauseCtl.isPaused();
-                        pauseCtl.set(now);
-                        _d.getElementById('pauseToggleButton').innerHTML = now ? '继续' : '暂停';
-                        _d.getElementById('pauseToggleButton').setAttribute('class', now ? 'btn btn-success' : 'btn btn-danger');
-                        _d.getElementById('pauseStatusText').innerHTML = now ? '已暂停' : '运行中';
-                        // 恢复时把「翻章模式」下拉框同步回存储里的真实设置
-                        if (!now) {
-                            try {
-                                _d.getElementById('unrivalJumpType').value = jumpMode.get();
-                            } catch (e) { }
+                    //v1.10.0：原「暂停/继续」切换按钮拆成两个 —— 「开始/继续」与「暂停」
+                    _d.getElementById('pauseStartButton').onclick = function () {
+                        if (!pauseCtl.isPaused()) {
+                            logs.addLog('已在运行中，无需重复开始', 'gray');
+                            return;
                         }
-                        logs.addLog(now ? '已暂停：不再自动翻章 / 作答 / 提交' : '已继续：恢复自动翻章 / 作答 / 提交', now ? 'orange' : 'green');
-                    }
+                        pauseCtl.set(false);
+                        _syncPauseUI();
+                        // 恢复时把「翻章模式」下拉框同步回存储里的真实设置
+                        try {
+                            _d.getElementById('unrivalJumpType').value = jumpMode.get();
+                        } catch (e) { }
+                        logs.addLog('已继续：恢复自动翻章 / 作答 / 提交', 'green');
+                    };
+                    _d.getElementById('pauseToggleButton').onclick = function () {
+                        if (pauseCtl.isPaused()) {
+                            logs.addLog('已处于暂停状态', 'gray');
+                            return;
+                        }
+                        pauseCtl.set(true);
+                        _syncPauseUI();
+                        logs.addLog('已暂停：不再自动翻章 / 作答 / 提交', 'orange');
+                    };
                     _d.getElementById('saveDbgButton').onclick = function () {
                         dbg.cfg.enabled = _d.getElementById('unrivalDbgEnabled').checked;
                         dbg.cfg.sink = _d.getElementById('unrivalDbgSink').value.trim() || 'http://127.0.0.1:8124';
@@ -3144,7 +3368,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         _w.top.jump = true;
                         logs.addLog('所有任务处理完毕，5秒后自动下一章', 'green');
                     } else if (pauseCtl.isPaused()) {
-                        logs.addLog('所有任务处理完毕，已暂停：不跳转下一章，点「运行控制 → 继续」恢复', 'orange');
+                        logs.addLog('所有任务处理完毕，已暂停：不跳转下一章，点「任务配置 → 开始/继续」恢复', 'orange');
                     } else {
                         logs.addLog('所有任务处理完毕，用户设置为不跳转，脚本已结束运行，如需自动跳转，请编辑脚本代码参数', 'green');
                     }
@@ -3194,7 +3418,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 _w.top.jump = true;
                 logs.addLog('此页无任务，5秒后自动下一章', 'green');
             } else if (pauseCtl.isPaused()) {
-                logs.addLog('此页无任务，已暂停：不跳转下一章，点「运行控制 → 继续」恢复', 'orange');
+                logs.addLog('此页无任务，已暂停：不跳转下一章，点「任务配置 → 开始/继续」恢复', 'orange');
             } else {
                 logs.addLog('此页无任务，用户设置为不跳转，脚本已结束运行，如需自动跳转，请编辑脚本代码参数', 'green');
             }
@@ -3649,7 +3873,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                 _w.top.jump = true;
                 logs.addLog('此页无任务，5秒后自动下一章', 'green');
             } else if (pauseCtl.isPaused()) {
-                logs.addLog('此页无任务，已暂停：不跳转下一章，点「运行控制 → 继续」恢复', 'orange');
+                logs.addLog('此页无任务，已暂停：不跳转下一章，点「任务配置 → 开始/继续」恢复', 'orange');
             } else {
                 logs.addLog('此页无任务，用户设置为不跳转，脚本已结束运行，如需自动跳转，请编辑脚本代码参数', 'green');
             }
@@ -3699,17 +3923,29 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                         jobName = item['property']['title'];
                     }
                     let jobType = String(item['type'] || 'unknown');
-                    _d.getElementById('joblist').innerHTML += `
+                    if (typeof autoRun != 'undefined' && autoRun.enabled()) {
+                        //v1.11：全程托管 —— 跳过做不了的任务，继续往下推进（跳过的会记账，不静默吞掉）
+                        _d.getElementById('joblist').innerHTML += `
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    ` + '已跳过（' + jobType + '）：' + jobName + `
+                                </div>
+                            </div>`
+                        logs.addLog('全程托管：跳过不支持的任务类型 [' + jobType + ']：' + jobName + ' —— 这类任务脚本做不了（直播要人工看、阅读要人工读），已跳过并继续', 'orange');
+                    } else {
+                        //v1.6：默认停下等人工处理，绝不能悄悄把还有任务点的章节跳过去
+                        _d.getElementById('joblist').innerHTML += `
                             <div class="panel panel-default">
                                 <div class="panel-body">
                                     ` + '未支持的任务（' + jobType + '）：' + jobName + `
                                 </div>
                             </div>`
-                    logs.addLog('未支持的任务类型 [' + jobType + ']：' + jobName + ' —— 脚本无法自动完成（直播要人工看、阅读要人工读）', 'red');
-                    logs.addLog('已停止自动翻章：请人工处理完这一章后，在「运行控制」点「继续」', 'orange');
-                    try {
-                        if (typeof pauseCtl != 'undefined') pauseCtl.set(true);
-                    } catch (e2) { }
+                        logs.addLog('未支持的任务类型 [' + jobType + ']：' + jobName + ' —— 脚本无法自动完成（直播要人工看、阅读要人工读）', 'red');
+                        logs.addLog('已停止自动翻章：请人工处理完这一章后，在「任务配置」点「开始/继续」', 'orange');
+                        try {
+                            if (typeof pauseCtl != 'undefined') pauseCtl.set(true);
+                        } catch (e2) { }
+                    }
                 } catch (e) { }
             }
         }

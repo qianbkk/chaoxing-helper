@@ -44,15 +44,16 @@ console.log('\n=== 2) 未支持的任务类型不再静默跳过 ===');
 t('打出任务类型', src.includes("'未支持的任务（' + jobType + '）：' + jobName"), true);
 t('日志含任务类型', src.includes("'未支持的任务类型 [' + jobType + ']：'"), true);
 t('日志说明脚本无法自动完成', src.includes('脚本无法自动完成（直播要人工看、阅读要人工读）'), true);
-t('日志说明已停止自动翻章', src.includes('已停止自动翻章：请人工处理完这一章后，在「运行控制」点「继续」'), true);
+t('日志说明已停止自动翻章', src.includes('已停止自动翻章：请人工处理完这一章后，在「任务配置」点「开始/继续」'), true);
 t('自动调用 pauseCtl.set(true)', src.includes("if (typeof pauseCtl != 'undefined') pauseCtl.set(true);"), true);
-t('旧的「已跳过：」文案已移除', src.includes("'已跳过：' + jobName"), false);
+//v1.11：「已跳过」文案只出现在「全程托管」分支里，默认行为仍是停下等人工
+t('跳过文案只在托管分支出现一次', (src.match(/'已跳过（'/g) || []).length, 1);
 
 // =============================================================================
 console.log('\n=== 3) 面板标题 / 元数据 / 说明精简 ===');
 t('@name 改为超星学习通小助手（AI 版）', src.includes('// @name          超星学习通小助手（AI 版）'), true);
 t('@author 标注 qianbkk', src.includes('// @author       qianbkk'), true);
-t('@version 为 1.9.0-AI', src.includes('// @version      1.9.0-AI'), true);
+t('@version 为 1.11.0-AI', src.includes('// @version      1.11.0-AI'), true);
 t('旧的 v1.0 标题已移除', src.includes('学习通小助手v1.0(不能答题填token)'), false);
 t('页面标题不再写死版本号（v1.8 改为运行时动态填）', src.includes('<title>超星学习通小助手（AI 版）</title>'), true);
 t('大标题带 id=unrivalTitle（布局模块靠它定位面板）', src.includes('id="unrivalTitle"'), true);
@@ -60,9 +61,10 @@ t('大标题标注作者 qianbkk', src.includes('>qianbkk</span>'), true);
 t('移除「阅读/图书任务页保活」勾选框', src.includes('id="unrivalExKeep"'), false);
 t('回填代码对已移除控件做空值保护', src.includes("var _exKeepEl = _d.getElementById('unrivalExKeep');"), true);
 t('保存代码对已移除控件做空值保护', src.includes("var _exKeepEl2 = _d.getElementById('unrivalExKeep');"), true);
-t('章节测验面板说明压缩为 1 段', (src.match(/链路：题库 → AI → 随机兜底/g) || []).length, 1);
-t('运行控制面板说明压缩为 1 段', (src.match(/一键停掉自动翻章 \/ 作答 \/ 提交/g) || []).length, 1);
-t('调试面板说明压缩为 1 段', (src.match(/面板日志实时写入文件，翻章不丢/g) || []).length, 1);
+//v1.10.0：面板重排后，各面板顶端的灰色说明段落全部去掉（只保留调试面板一行必要的用法说明）
+t('章节测验面板的说明段落已去掉', src.includes('链路：题库 → AI → 随机兜底'), false);
+t('运行控制不再单独成块（说明段落与面板一起并入任务配置）', src.includes('一键停掉自动翻章 / 作答 / 提交'), false);
+t('调试面板保留一行必要的用法说明', src.includes('仅开发时使用：需先在本机运行 log-sink（端口 8124）'), true);
 t('不再出现「这三项由上游整理而来」', src.includes('这三项由上游整理而来'), false);
 
 // =============================================================================

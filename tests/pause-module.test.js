@@ -29,9 +29,12 @@ t('存在暂停模块起始标记', src.includes('//==================== v1.5 �
 t('存在暂停模块结束标记', src.includes('//==================== v1.5 暂停控制模块结束 ===================='), true);
 t('面板含暂停按钮 pauseToggleButton', src.includes("id='pauseToggleButton'"), true);
 t('面板含状态文本 pauseStatusText', src.includes('id="pauseStatusText"'), true);
-t('面板含运行控制区块 pausePanel', src.includes('id="pausePanel"'), true);
-t('按钮绑定存在', src.includes("_d.getElementById('pauseToggleButton').onclick = function () {"), true);
-t('按钮切换持久化状态', src.includes("pauseCtl.set(now);"), true);
+//v1.10.0：运行控制不再单独成块，按钮并进「任务配置」
+t('运行控制不再单独成块（pausePanel 已移除）', src.includes('id="pausePanel"'), false);
+t('任务配置里有「开始/继续」按钮 pauseStartButton', src.includes("id='pauseStartButton'"), true);
+t('两个按钮的绑定都存在', src.includes("_d.getElementById('pauseStartButton').onclick = function () {") && src.includes("_d.getElementById('pauseToggleButton').onclick = function () {"), true);
+t('暂停按钮写持久化状态', src.includes('pauseCtl.set(true);'), true);
+t('继续按钮写持久化状态', src.includes('pauseCtl.set(false);'), true);
 t('持久化键为 unrivalPaused', src.includes("KEY: 'unrivalPaused'"), true);
 t('暂停时把 jumpType 压成 2', src.includes('jumpType = 2;'), true);
 t('拦截上游写 _w.jump = true', src.includes("Object.defineProperty(_w, 'jump'"), true);

@@ -18,11 +18,16 @@
 ```
 src/baseline/chaoxing-helper.base.js
    │
-   ├─ patch-v1.9.0.ps1 -Mode official ─→ build/chaoxing-helper.user.js      ─→ dist/chaoxing-helper.user.js
-   │                                    ─→ build/chaoxing-helper.meta.js      ─→ dist/chaoxing-helper.meta.js
-   └─ patch-v1.9.0.ps1 -Mode debug   ─→ build/chaoxing-helper.debug.user.js
-                                        build/chaoxing-helper.debug.meta.js
+   ├─ patch-v1.9.0.ps1  -Mode official ─→ build/chaoxing-helper.v1.9.0.js
+   │   └─ patch-v1.10.0.ps1 -Mode official ─→ build/chaoxing-helper.v1.10.0.js
+   │       └─ patch-v1.11.0.ps1 -Mode official ─→ build/chaoxing-helper.user.js  ─→ dist/chaoxing-helper.user.js
+   │                                                      ─→ build/chaoxing-helper.meta.js  ─→ dist/chaoxing-helper.meta.js
+   └─ patch-v1.9.0.ps1  -Mode debug   ─→ …（同一条链，每步再跑一次）─→ build/chaoxing-helper.debug.user.js
+                                                                        build/chaoxing-helper.debug.meta.js
 ```
+
+补丁链是**逐版递进**的：每一步都作用在上一步的产物上，中间产物落在 `build/`（gitignore）。
+新增一版 = 新增一个 `patch-vX.Y.Z.ps1`，并在 `src/build.ps1` 里挂进链条。
 
 **两种变体只差两行元数据**（`@updateURL` / `@downloadURL`）：
 

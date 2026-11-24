@@ -132,8 +132,9 @@ function makeJumpMode(stored) {
 
 // =============================================================================
 section('3) 暂停导致的停止提示单独成句');
-t('「所有任务处理完毕」有暂停分支', src.includes('所有任务处理完毕，已暂停：不跳转下一章，点「运行控制 → 继续」恢复'), true);
-t('「此页无任务」有暂停分支', src.includes('此页无任务，已暂停：不跳转下一章，点「运行控制 → 继续」恢复'), true);
+//v1.10.0：运行控制按钮并进了「任务配置」，提示文案跟着改
+t('「所有任务处理完毕」有暂停分支', src.includes('所有任务处理完毕，已暂停：不跳转下一章，点「任务配置 → 开始/继续」恢复'), true);
+t('「此页无任务」有暂停分支', src.includes('此页无任务，已暂停：不跳转下一章，点「任务配置 → 开始/继续」恢复'), true);
 t('两个「此页无任务」分支都改了', (src.match(/此页无任务，已暂停：不跳转下一章/g) || []).length, 2);
 t('非暂停时仍保留原提示', src.includes('用户设置为不跳转，脚本已结束运行'), true);
 
@@ -154,10 +155,10 @@ t('有正文但没命中关键词时给首段文字', src.includes('页面正文
 t('只读取 DOM，不点按钮', src.includes('workResult.report'), true);
 
 // =============================================================================
-section('5) 运行日志跨章节堆积持久化');
-t('存在日志持久化模块起始标记', src.includes('//==================== v1.8.1 运行日志持久化（跨翻章堆积）开始 ===================='), true);
-t('存在日志持久化模块结束标记', src.includes('//==================== v1.8.1 运行日志持久化（跨翻章堆积）结束 ===================='), true);
-t('旧的 v1.8 日志模块已替换', src.includes('//==================== v1.8 运行日志持久化（跨翻章堆积）开始 ===================='), false);
+section('5) 运行日志：v1.10 改成「按标签页会话」');
+t('存在日志会话模块起始标记', src.includes('//==================== v1.10 运行日志（按标签页会话）开始 ===================='), true);
+t('存在日志会话模块结束标记', src.includes('//==================== v1.10 运行日志（按标签页会话）结束 ===================='), true);
+t('旧的 v1.8.1 日志模块已替换', src.includes('//==================== v1.8.1 运行日志持久化（跨翻章堆积）开始 ===================='), false);
 t('存储键为 unrivalLogHistory', src.includes("KEY: 'unrivalLogHistory'"), true);
 t('上限 500 条', src.includes('MAX: 500'), true);
 t('包装 logs.addLog', src.includes('logs.addLog = function (str, color) {'), true);
@@ -166,16 +167,31 @@ t('清空按钮绑定存在', src.includes("_d.getElementById('clearLogButton')"
 t('v1.8.1：日志倒序渲染（最新在最上）', src.includes('for (var i = this._lines.length - 1; i >= 0; i--)'), true);
 t('v1.8.1：滚动停在顶部', src.includes('el.scrollTop = 0;'), true);
 t('v1.8.1：不再滚到底部', src.includes('el.scrollTop = el.scrollHeight;'), false);
+t('v1.10：优先用 sessionStorage（同标签页换页还在，关标签页就没）', src.includes("if (typeof sessionStorage != 'undefined' && sessionStorage) return sessionStorage;"), true);
+t('v1.10：sessionStorage 不可用时退回 GM 存储', src.includes("this._store = 'gm';"), true);
+t('v1.10：会话模式下清掉 v1.8.1 留在 GM 存储里的旧历史', src.includes("if (GM_getValue(this.KEY, '')) GM_setValue(this.KEY, '[]');"), true);
 
 // —— 沙箱行为：包装 addLog 后日志进存储 ——
 // =============================================================================
-section('6) 运行日志持久化：沙箱行为');
+section('6) 运行日志会话化：沙箱行为');
 const logMod = sliceModule(
-    '//==================== v1.8.1 运行日志持久化（跨翻章堆积）开始 ====================',
-    '//==================== v1.8.1 运行日志持久化（跨翻章堆积）结束 ===================='
+    '//==================== v1.10 运行日志（按标签页会话）开始 ====================',
+    '//==================== v1.10 运行日志（按标签页会话）结束 ===================='
 );
 
-{
+// 造一个假的 sessionStorage（= 一个标签页的会话）
+function makeSessionStorage() {
+    const data = {};
+    return {
+        getItem: (k) => (k in data ? data[k] : null),
+        setItem: (k, v) => { data[k] = String(v); },
+        removeItem: (k) => { delete data[k]; },
+        _data: data
+    };
+}
+
+// 在沙箱里跑真实的日志模块代码；ss 传 null 表示「sessionStorage 不可用」
+function runLogModule(ss) {
     const st = {};
     const setCalls = [];
     const GM_getValue = (k, d) => (k in st ? st[k] : d);
@@ -186,47 +202,73 @@ const logMod = sliceModule(
     // 立即执行的 setTimeout：让模块里带防抖的 save() 同步落库，测试结果可确定
     const fakeSetTimeout = (fn) => { fn(); return 0; };
     const factory = new Function(
-        'GM_getValue', 'GM_setValue', 'logs', '_d', 'console', 'setTimeout', 'clearTimeout',
+        'GM_getValue', 'GM_setValue', 'logs', '_d', 'console', 'setTimeout', 'clearTimeout', 'sessionStorage',
         logMod + '\nreturn { h: logHist };'
     );
-    const r = factory(GM_getValue, GM_setValue, logsObj, _d, console, fakeSetTimeout, clearTimeout);
+    const r = factory(GM_getValue, GM_setValue, logsObj, _d, console, fakeSetTimeout, clearTimeout, ss || undefined);
+    return { h: r.h, st: st, setCalls: setCalls, logsObj: logsObj, fakeLog: fakeLog };
+}
 
-    logsObj.addLog('第一条', 'red');
-    t('日志进了历史', r.h._lines.length, 1);
-    t('历史记下了内容', r.h._lines[0].s, '第一条');
-    t('历史记下了颜色', r.h._lines[0].c, 'red');
-    t('面板已重绘', fakeLog.innerHTML.indexOf('第一条') >= 0, true);
+// 6.1 会话模式：日志写进 sessionStorage，不写 GM 存储
+{
+    const ss = makeSessionStorage();
+    const h = runLogModule(ss);
+    h.logsObj.addLog('第一条', 'red');
+    t('日志进了会话历史', h.h._lines.length, 1);
+    t('历史记下了内容', h.h._lines[0].s, '第一条');
+    t('历史记下了颜色', h.h._lines[0].c, 'red');
+    t('面板已重绘', h.fakeLog.innerHTML.indexOf('第一条') >= 0, true);
+    t('存储类型是 session', h.h._store, 'session');
+    t('日志写在 sessionStorage 里', String(ss.getItem('unrivalLogHistory')).indexOf('第一条') >= 0, true);
+    t('没有往 GM 存储写日志', h.setCalls.filter(c => c[0] === 'unrivalLogHistory').length, 0);
 
     // 上限：超过 MAX 的丢最旧的
-    for (let i = 0; i < 505; i++) logsObj.addLog('第' + i + '条', 'black');
-    t('历史长度不超过上限', r.h._lines.length <= 500, true);
-    t('最新一条还在', r.h._lines[r.h._lines.length - 1].s, '第504条');
-
-    // 存储确实写了
-    const wrote = setCalls.some(c => c[0] === 'unrivalLogHistory');
-    t('写入了 GM 存储', wrote, true);
+    for (let i = 0; i < 505; i++) h.logsObj.addLog('第' + i + '条', 'black');
+    t('历史长度不超过上限', h.h._lines.length <= 500, true);
+    t('最新一条还在', h.h._lines[h.h._lines.length - 1].s, '第504条');
 
     // 清空
-    r.h.clear();
-    t('清空后历史为空', r.h._lines.length, 0);
-    t('清空后存储被写空数组', st.unrivalLogHistory, '[]');
+    h.h.clear();
+    t('清空后历史为空', h.h._lines.length, 0);
+    t('清空后会话存储里的键被移除', ss.getItem('unrivalLogHistory'), null);
+}
 
-    // 合并写入：别的标签页先写进去的行，本页保存时不能被冲掉
-    GM_setValue('unrivalLogHistory', JSON.stringify([{ t: '00:00:01', c: 'black', s: '另一个标签页的日志' }]));
-    logsObj.addLog('本页的日志', 'black');
-    const merged = JSON.parse(st.unrivalLogHistory);
-    t('合并写入后保留对方标签页的日志', merged.some(l => l.s === '另一个标签页的日志'), true);
-    t('合并写入后保留本页的日志', merged.some(l => l.s === '本页的日志'), true);
-    t('合并写入不会产生重复行', merged.length, new Set(merged.map(l => l.t + '|' + l.c + '|' + l.s)).size);
+// 6.2 翻章（同标签页内换页）：会话存储还在 → 日志保留
+{
+    const ss = makeSessionStorage();
+    const first = runLogModule(ss);
+    first.logsObj.addLog('第一章的日志', 'black');
+    const second = runLogModule(ss);   // 换页 = 脚本重新执行，但共用同一个标签页的会话
+    t('翻章后历史还在', second.h._lines.length >= 1, true);
+    t('翻章后上一章的日志可见', second.h._lines.some(l => l.s === '第一章的日志'), true);
+}
 
-    // v1.8.1：面板上最新的那条排在最上面
-    r.h.clear();
-    logsObj.addLog('第一条', 'black');
-    logsObj.addLog('第二条', 'black');
-    logsObj.addLog('第三条', 'black');
-    const pos1 = fakeLog.innerHTML.indexOf('第一条');
-    const pos2 = fakeLog.innerHTML.indexOf('第二条');
-    const pos3 = fakeLog.innerHTML.indexOf('第三条');
+// 6.3 关掉标签页再打开：新的会话 → 新的日志
+{
+    const first = runLogModule(makeSessionStorage());
+    first.logsObj.addLog('上一轮的日志', 'black');
+    const second = runLogModule(makeSessionStorage());   // 新标签页 = 空的会话
+    t('新标签页的日志是空的', second.h._lines.length, 0);
+    t('新标签页看不到上一轮的日志', second.h._lines.some(l => l.s === '上一轮的日志'), false);
+}
+
+// 6.4 sessionStorage 不可用 → 退回 GM 存储（行为同 v1.8.1，日志功能不挂）
+{
+    const h = runLogModule(null);
+    h.logsObj.addLog('兜底日志', 'black');
+    t('兜底时存储类型是 gm', h.h._store, 'gm');
+    t('兜底时写进 GM 存储', h.setCalls.filter(c => c[0] === 'unrivalLogHistory').length >= 1, true);
+}
+
+// 6.5 面板上最新的那条排在最上面
+{
+    const h = runLogModule(makeSessionStorage());
+    h.logsObj.addLog('第一条', 'black');
+    h.logsObj.addLog('第二条', 'black');
+    h.logsObj.addLog('第三条', 'black');
+    const pos1 = h.fakeLog.innerHTML.indexOf('第一条');
+    const pos2 = h.fakeLog.innerHTML.indexOf('第二条');
+    const pos3 = h.fakeLog.innerHTML.indexOf('第三条');
     t('最新的那条排在最上面', pos3 < pos2 && pos2 < pos1, true);
 }
 
@@ -269,7 +311,9 @@ t('面板标题不再带「（v1.4.2 · 已在真实超星页跑通全链路）�
 t('面板标题不再带「（v1.5 · 暂停 / 继续）」', src.includes('（v1.5 · 暂停 / 继续）'), false);
 t('面板标题不再带「（v1.5 · 日志实时落盘）」', src.includes('（v1.5 · 日志实时落盘）'), false);
 t('面板标题保留「章节测验 / 作业自动作答」', src.includes('章节测验 / 作业自动作答'), true);
-t('面板标题保留「运行控制」', src.includes('>运行控制<'), true);
+//v1.10.0：运行控制不再是独立面板，作为「任务配置」里的一行
+t('运行控制不再单独成面板标题', src.includes('>运行控制<'), false);
+t('任务配置里有运行控制这一行', src.includes('运行控制：'), true);
 t('面板标题保留「调试模式」', src.includes('>调试模式<'), true);
 
 // =============================================================================
