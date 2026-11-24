@@ -106,7 +106,7 @@ t('保存题库设置会写 tikutoken', src.includes("GM_setValue('tikutoken', t
 t('保存题库设置会写正确率门槛', src.includes("GM_setValue('unrivalaccuracy', accuracy);"), true);
 t('保存题库设置会写翻章模式', src.includes("var _jtReal = jumpMode.set(_d.getElementById('unrivalJumpType').value);"), true);
 t('保存 AI 设置会写接口地址', src.includes("GM_setValue('unrivalAiBaseUrl',"), true);
-t('面板就绪检查包含新控件', src.includes("_d.getElementById('unrivalAutoRun') && _d.getElementById('testAiButton')"), true);
+t('面板就绪检查包含新控件', src.includes("_d.getElementById('unrivalAutoRun') && _d.getElementById('unrivalReadAssist')"), true);
 
 // =============================================================================
 section('4) 小块左右并排 + 去掉没必要的小字');

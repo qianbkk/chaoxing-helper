@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          超星学习通小助手（AI 版）
 // @namespace    unrival
-// @version      1.11.0-AI
+// @version      1.11.1-AI
 // @description  超星学习通小助手（AI 版）：自动刷视频与文档、自动做章节测验/作业。章节测验先用题库作答，查不到或被限流时自动降级到 AI（OpenAI 兼容接口）；超星的加密字体自动解密，题干与选项都能正常识别。题库 Token、正确率门槛、翻章模式、AI 接口地址与密钥都可在面板配置。
 // @author       qianbkk
 // @run-at       document-end

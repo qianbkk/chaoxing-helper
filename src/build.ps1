@@ -48,7 +48,8 @@ Write-Output '==> 构建 v1.9.0 中间产物'
 
 Write-Output '==> 构建正式版（更新地址 = GitHub Releases）'
 & (Join-Path $PSScriptRoot 'patches\patch-v1.10.0.ps1') -Mode official -InPath (Join-Path $buildDir 'chaoxing-helper.v1.9.0.js') -OutPath (Join-Path $buildDir 'chaoxing-helper.v1.10.0.js')
-& (Join-Path $PSScriptRoot 'patches\patch-v1.11.0.ps1') -Mode official -InPath (Join-Path $buildDir 'chaoxing-helper.v1.10.0.js')
+& (Join-Path $PSScriptRoot 'patches\patch-v1.11.0.ps1') -Mode official -InPath (Join-Path $buildDir 'chaoxing-helper.v1.10.0.js') -OutPath (Join-Path $buildDir 'chaoxing-helper.v1.11.0.js')
+& (Join-Path $PSScriptRoot 'patches\patch-v1.11.1.ps1') -Mode official -InPath (Join-Path $buildDir 'chaoxing-helper.v1.11.0.js')
 $official = Join-Path $buildDir 'chaoxing-helper.user.js'
 if (-not (Test-Path -LiteralPath $official)) { throw "构建产物缺失: $official" }
 Copy-Item -LiteralPath $official -Destination (Join-Path $distDir 'chaoxing-helper.user.js') -Force
@@ -61,7 +62,8 @@ if ($LASTEXITCODE -ne 0) { throw '元数据块生成失败' }
 Write-Output '==> 构建调试变体（更新地址 = 本机接收端 127.0.0.1:8124）'
 & (Join-Path $PSScriptRoot 'patches\patch-v1.9.0.ps1') -Mode debug -OutPath (Join-Path $buildDir 'chaoxing-helper.debug.v1.9.0.js')
 & (Join-Path $PSScriptRoot 'patches\patch-v1.10.0.ps1') -Mode debug -InPath (Join-Path $buildDir 'chaoxing-helper.debug.v1.9.0.js') -OutPath (Join-Path $buildDir 'chaoxing-helper.debug.v1.10.0.js')
-& (Join-Path $PSScriptRoot 'patches\patch-v1.11.0.ps1') -Mode debug -InPath (Join-Path $buildDir 'chaoxing-helper.debug.v1.10.0.js')
+& (Join-Path $PSScriptRoot 'patches\patch-v1.11.0.ps1') -Mode debug -InPath (Join-Path $buildDir 'chaoxing-helper.debug.v1.10.0.js') -OutPath (Join-Path $buildDir 'chaoxing-helper.debug.v1.11.0.js')
+& (Join-Path $PSScriptRoot 'patches\patch-v1.11.1.ps1') -Mode debug -InPath (Join-Path $buildDir 'chaoxing-helper.debug.v1.11.0.js')
 $debug = Join-Path $buildDir 'chaoxing-helper.debug.user.js'
 if (-not (Test-Path -LiteralPath $debug)) { throw "调试变体缺失: $debug" }
 & node (Join-Path $PSScriptRoot 'tools\make-meta.cjs') $debug (Join-Path $buildDir 'chaoxing-helper.debug.meta.js')
