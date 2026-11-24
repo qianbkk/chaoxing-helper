@@ -1,0 +1,22 @@
+# ---- 构建中间产物 ----
+# src/build.ps1 生成的中间版本与调试变体，只用于串联补丁链和本机调试，可随时删
+build/
+
+# ---- 本机调试日志（src/tools/log-sink.cjs 落盘，不进版本库）----
+logs/
+
+# ---- 临时目录 ----
+tmp/
+temp/
+
+# ---- 系统 / 编辑器垃圾 ----
+Thumbs.db
+desktop.ini
+.DS_Store
+*.tmp
+*.bak
+~$*
+
+# ---- Node（测试用）----
+node_modules/
+npm-debug.log*

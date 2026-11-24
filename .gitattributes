@@ -1,0 +1,16 @@
+# 统一换行策略，避免 Windows/Linux 克隆时产生无谓 diff
+* text=auto
+
+# 用户脚本：LF（浏览器与各类编辑器通用）
+*.user.js text eol=lf
+*.js    text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+
+# PowerShell 脚本：CRLF（Windows PowerShell 5.1 对 LF 脚本更友好）
+*.ps1   text eol=crlf
+
+# 二进制
+*.png  binary
+*.jpg  binary
+*.zip  binary
