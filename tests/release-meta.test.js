@@ -33,6 +33,9 @@ const metaFile = path.join(distDir, 'chaoxing-helper.meta.js');
 const debugFile = path.join(root, 'build', 'chaoxing-helper.debug.user.js');
 
 const RELEASE_BASE = 'https://github.com/qianbkk/chaoxing-helper/releases/latest/download';
+// v1.11.5 起：正式版的更新通道换成 jsDelivr（国内可直连），
+// GitHub Releases 继续发版，作为「jsDelivr 走不通时」的备用通道。
+const CDN_BASE = 'https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist';
 
 let pass = 0, fail = 0;
 function t(name, actual, expect) {
@@ -64,15 +67,18 @@ t('dist/ 只留当前发布件（.user.js 恰好一个）', distJs, ['chaoxing-h
 t('发布件有 @version', typeof ver === 'string' && ver.length > 0, true);
 
 section('2) 正式版的更新地址');
-t('@updateURL 指向 GitHub Releases 的元数据块',
-    src.includes('// @updateURL    ' + RELEASE_BASE + '/chaoxing-helper.meta.js'), true);
-t('@downloadURL 指向 GitHub Releases 的脚本',
-    src.includes('// @downloadURL  ' + RELEASE_BASE + '/chaoxing-helper.user.js'), true);
+t('@updateURL 指向 jsDelivr 的元数据块（国内可直连）',
+    src.includes('// @updateURL    ' + CDN_BASE + '/chaoxing-helper.meta.js'), true);
+t('@downloadURL 指向 jsDelivr 的脚本',
+    src.includes('// @downloadURL  ' + CDN_BASE + '/chaoxing-helper.user.js'), true);
 t('正式版的元数据里没有本机地址', metaBlockOf(src).includes('127.0.0.1'), false);
 t('正式版元数据声明了仓库主页',
     metaBlockOf(src).includes('// @homepageURL  https://github.com/qianbkk/chaoxing-helper'), true);
 // 调试代码保留在公开版里，但开关默认是关的 —— 装了脚本不会往任何地址发请求
 t('调试开关默认关闭', src.includes("GM_getValue('unrivalDbgEnabled', '0') == '1'"), true);
+// GitHub Releases 留作备用：元数据里不再出现它，但仓库主页仍然指向 GitHub，
+// 备用通道由文档写明（见 docs/安装与自动更新.md）。
+t('元数据里不再有 GitHub Releases 下载地址', metaBlockOf(src).includes(RELEASE_BASE), false);
 
 section('3) 元数据块');
 const meta = fs.existsSync(metaFile) ? fs.readFileSync(metaFile, 'utf8') : '';
@@ -82,9 +88,9 @@ t('元数据块能被 ScriptCat 的 HEADER_BLOCK 规则解析',
     /\/\/[ \t]*==User(Script|Subscribe)==([\s\S]+?)\/\/[ \t]*==\/User\1==/.test(meta), true);
 t('元数据块的 @version 与脚本一致', (meta.match(/@version\s+(\S+)/) || [])[1], ver);
 t('元数据块的 @updateURL 与脚本一致',
-    (meta.match(/@updateURL\s+(\S+)/) || [])[1], RELEASE_BASE + '/chaoxing-helper.meta.js');
+    (meta.match(/@updateURL\s+(\S+)/) || [])[1], CDN_BASE + '/chaoxing-helper.meta.js');
 t('元数据块的 @downloadURL 与脚本一致',
-    (meta.match(/@downloadURL\s+(\S+)/) || [])[1], RELEASE_BASE + '/chaoxing-helper.user.js');
+    (meta.match(/@downloadURL\s+(\S+)/) || [])[1], CDN_BASE + '/chaoxing-helper.user.js');
 
 section('4) 调试变体（本机自用）');
 if (fs.existsSync(debugFile)) {
@@ -121,6 +127,11 @@ for (const [label, re] of forbidden) {
 }
 const metaHit = meta.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
 t('元数据块不含邮箱', metaHit ? metaHit[0] : null, null);
+// v1.11.5：上游作者的赞赏码（内联 base64 微信小程序码）已从发布件移除
+t('发布件不含上游赞赏码（base222 变量）', src.includes('base222'), false);
+t('发布件不含那张赞赏码的图片标签', src.includes('alt="Smiley face"'), false);
+// 删掉赞赏码后发布件会小一大截（那张图本身约 169KB base64）
+t('发布件里没有超长内联 base64 图片', (src.match(/data:image\/png;base64,[A-Za-z0-9+/=]{5000,}/) || []).length, 0);
 
 section('6) 上游第三方外发已清除');
 // 刷视频的进度上报必须由脚本本地算出签名，再发给超星自己的接口，

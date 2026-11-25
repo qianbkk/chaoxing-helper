@@ -44,8 +44,8 @@ t('服务脚本存在', fs.existsSync(serveFile), true);
 const check = spawnSync('node', ['--check', serveFile], { encoding: 'utf8' });
 t('服务脚本语法校验通过', check.status, 0);
 
-t('脚本声明了 @updateURL', src.includes('// @updateURL    https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.meta.js'), true);
-t('脚本声明了 @downloadURL', src.includes('// @downloadURL  https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.user.js'), true);
+t('脚本声明了 @updateURL', src.includes('// @updateURL    https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.meta.js'), true);
+t('脚本声明了 @downloadURL', src.includes('// @downloadURL  https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.user.js'), true);
 
 // =============================================================================
 console.log('\n=== 2) 服务行为 ===');

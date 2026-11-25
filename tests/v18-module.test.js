@@ -344,8 +344,8 @@ t('存在命令通道起始标记', src.includes('//==================== v1.8.2 
 t('存在命令通道结束标记', src.includes('//==================== v1.8.2 调试命令通道结束 ===================='), true);
 t('旧的 v1.7 命令通道已整体替换', src.includes('//==================== v1.7 调试命令通道开始 ===================='), false);
 // —— 跟随更新：元数据 ——
-t('声明了 @updateURL', src.includes('// @updateURL    https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.meta.js'), true);
-t('声明了 @downloadURL', src.includes('// @downloadURL  https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.user.js'), true);
+t('声明了 @updateURL', src.includes('// @updateURL    https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.meta.js'), true);
+t('声明了 @downloadURL', src.includes('// @downloadURL  https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.user.js'), true);
 t('授权了 GM_openInTab', src.includes('// @grant        GM_openInTab'), true);
 // —— 跟随更新：脚本侧 ——
 t('newversion 命令兼容对象字段', src.includes('var _v = arg[0] || (c && c.version) || \'?\';'), true);

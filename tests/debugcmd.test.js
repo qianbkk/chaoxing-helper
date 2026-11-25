@@ -30,7 +30,7 @@ const src = fs.readFileSync(file, 'utf8');
 
 // =============================================================================
 console.log('\n=== 1) 结构断言 ===');
-t('@version 为 1.11.4-AI', src.includes('// @version      1.11.4-AI'), true);
+t('@version 为 1.11.5-AI', src.includes('// @version      1.11.5-AI'), true);
 t('存在命令通道起始标记', src.includes('//==================== v1.8.2 调试命令通道开始 ===================='), true);
 t('存在命令通道结束标记', src.includes('//==================== v1.8.2 调试命令通道结束 ===================='), true);
 t('轮询地址带 since 序号', src.includes("'/__cmd?since=' + this._seq"), true);

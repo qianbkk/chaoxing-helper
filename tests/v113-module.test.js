@@ -82,8 +82,8 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // =============================================================================
 section('1) 发布件元数据与模块标记');
-t('@version 为 1.11.4-AI', src.includes('// @version      1.11.4-AI'), true);
-t('旧的 1.11.3 版本号已不存在', src.includes('// @version      1.11.3-AI'), false);
+t('@version 为 1.11.5-AI', src.includes('// @version      1.11.5-AI'), true);
+t('旧的 1.11.4 版本号已不存在', src.includes('// @version      1.11.4-AI'), false);
 t('存在多源题库模块', src.includes('//==================== v1.11.3 多源免费题库开始 ===================='), true);
 t('@connect 里有 icodef 主源', src.includes('// @connect      cx.icodef.com'), true);
 t('@connect 里有 icodef 备用源', src.includes('// @connect      q.icodef.com'), true);

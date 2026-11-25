@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          超星学习通小助手（AI 版）
 // @namespace    unrival
-// @version      1.11.4-AI
+// @version      1.11.5-AI
 // @description  超星学习通小助手（AI 版）：自动刷视频与文档、自动做章节测验/作业。章节测验先用免费题库作答（多源并发 + 打分匹配），查不到时才自动降级到 AI（OpenAI 兼容接口）；超星的加密字体自动解密，题干与选项都能正常识别。题库 Token、正确率门槛、翻章模式、AI 接口地址与密钥都可在面板配置。
 // @author       qianbkk
 // @run-at       document-end
@@ -12,8 +12,8 @@
 // @match        *://*.hnsyu.net/*
 // @match        *://*.ac.cn/*
 // @icon         http://pan-yz.chaoxing.com/favicon.ico
-// @updateURL    https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.meta.js
-// @downloadURL  https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.user.js
+// @updateURL    https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.meta.js
+// @downloadURL  https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.user.js
 // @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue

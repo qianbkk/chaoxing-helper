@@ -5,9 +5,9 @@
 
 | | |
 |---|---|
-| 当前版本 | **v1.11.4-AI** |
-| 安装地址 | https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.user.js |
-| 更新方式 | 脚本已声明更新地址，在脚本管理器里点「检查更新」即可 |
+| 当前版本 | **v1.11.5-AI** |
+| 安装地址 | https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.user.js |
+| 更新方式 | 脚本已声明更新地址，在脚本管理器里点「检查更新」即可（走 jsDelivr，国内直连） |
 | 脚本管理器 | **ScriptCat（脚本猫）**，见 [§2](#2-安装) |
 | 许可 | GPL-3.0-or-later |
 
@@ -68,17 +68,17 @@ isCat = GM_info.scriptHandler == 'ScriptCat';
 浏览器打开下面这个地址，脚本猫会接管 `.user.js` 并弹出安装页，点「安装」：
 
 ```
-https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.user.js
+https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.user.js
 ```
 
 > 必须通过 http(s) 打开才会触发安装；用 `file://` 打开只会被当成纯文本渲染。
 
-> **下载慢？**（2026-11-25 实测）GitHub 直连能连上但只有 13–25 KB/s，实测三轮有两轮 30 秒超时下不完；
-> 走代理稳定在 130–153 KB/s。**挂代理最省事**；不能挂代理就用镜像，把地址前缀换成
-> `https://ghfast.top/` 或 `https://gh-proxy.com/`（实测可用、字节一致），或用
-> `https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.user.js`。
-> **注意**：脚本跑起来之后不需要代理 —— 它访问的题库和超星域名国内都能直连。
-> 详细数据与完整镜像地址见 [docs/安装与自动更新.md](docs/安装与自动更新.md) §2。
+> **下载慢？**（2026-11-25 实测）首选上面这个 jsDelivr 地址 —— **国内可直连，不用梯子**，
+> 「检查更新」也走它。实测 52–141 KB/s，字节与发布件逐字节一致。
+> 万一 jsDelivr 慢了，备用是 GitHub Releases（直连只有 13–25 KB/s、三轮有两轮超时），
+> 或给路径套上 `https://ghfast.top/` / `https://gh-proxy.com/` 前缀（实测可用）。
+> **脚本跑起来之后不需要代理** —— 它访问的题库和超星域名国内都能直连。
+> 详细数据与完整备用地址见 [docs/安装与自动更新.md](docs/安装与自动更新.md) §2、§4。
 
 ### 2.3 首次配置
 
@@ -133,14 +133,24 @@ curl 'http://127.0.0.1:8124/__log?tail=50'
 脚本元数据里声明了：
 
 ```
-// @updateURL    https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.meta.js
-// @downloadURL  https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.user.js
+// @updateURL    https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.meta.js
+// @downloadURL  https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.user.js
 ```
 
-发新版时把**同名资产**挂到新的 Release 上，**已安装的用户点「检查更新」就能拿到新版，元数据不用改**。
+发新版时把新版本提交到 `main` 分支（`dist/` 里的两个文件是提交进仓库的），
+**已安装的用户点「检查更新」就能拿到新版**，元数据不用改。
 
-为什么走 Release 而不是 `main` 分支的 raw 地址：`main` 上可能是实验性改动，推上去就会影响所有用户的更新；
-发 Release 才是「这一版是稳定版」的明确动作，`releases/latest` 永远指向最新的正式版（预发布版不算）。
+**为什么走 jsDelivr（v1.11.5 起）**：「检查更新」是浏览器**直接请求** `@updateURL` 的。
+GitHub 在国内快慢极不稳定 —— 实测同一个地址直连只有 461–1068 B/s，715KB 的文件三轮里有两轮
+30 秒超时下载不全，于是「不挂梯子就更新不了，或者更新很慢」。
+jsDelivr 是国内可直连的 CDN（实测三轮全 200），读的就是本仓库 `dist/` 里的同一份文件。
+
+> ⚠️ **代价**：jsDelivr 走 `main` 分支有**缓存延迟**（通常几分钟到几十分钟），不是提交即到。
+> 发完新版如果还显示旧版本，等一会儿再点一次「检查更新」。
+
+GitHub Releases **照常发版**，作为 jsDelivr 走不通时的**备用通道**：
+`https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-helper.user.js`
+（发布流程是「先推 main，再发 Release」，否则 jsDelivr 上还是旧版。）
 
 两个必须知道的实现细节（读脚本管理器源码 + 本机实测确认）：
 
@@ -172,7 +182,8 @@ chaoxing-helper/
 │   │   ├── patch-v1.11.1.ps1        ← v1.11.1：阅读助手
 │   │   ├── patch-v1.11.2.ps1        ← v1.11.2：面板右栏 + 日志规范 + 阅读助手增强
 │   │   ├── patch-v1.11.3.ps1        ← v1.11.3：多源免费题库 + 打分匹配 + 失败分类
-│   │   └── patch-v1.11.4.ps1        ← v1.11.4：右栏位置修复 + 文案收敛
+│   │   ├── patch-v1.11.4.ps1        ← v1.11.4：右栏位置修复 + 文案收敛
+│   │   └── patch-v1.11.5.ps1        ← v1.11.5：删上游赞赏码 + 更新通道切 jsDelivr
 │   ├── modules/                     ← 整块注入脚本的独立模块源码（分「活源码」「历史快照」两组）
 │   │   ├── loghist.v1.10.js         ← 【活】运行日志按标签页会话化（patch-v1.10.0 读入）
 │   │   ├── autorun.v1.11.js         ← 【活】全程托管模式（patch-v1.11.0 读入）
@@ -206,7 +217,7 @@ chaoxing-helper/
 │   ├── chaoxing-helper.user.js      ← ★当前发布版
 │   └── chaoxing-helper.meta.js      ← ★它的元数据块（@updateURL 指向的资产）
 ├── build/                           ← 构建中间产物 + 调试变体，已 gitignore，可随时删
-├── tests/                           ← 十五套测试，改完必跑（共 930 项断言）
+├── tests/                           ← 十五套测试，改完必跑（共 934 项断言）
 │   ├── ai-module.test.js            ← AI 模块单元测试（fake DOM，43 断言）
 │   ├── ai-integration.test.js       ← 端到端集成测试（mock OpenAI 服务，14 断言）
 │   ├── debugcmd.test.js             ← 调试命令通道 + 接收端往返（71 断言）
@@ -262,17 +273,25 @@ notepad src\build.ps1
 # 2. 一键重建（完整性闸门 + 两个产物的语法校验）
 pwsh -File src\build.ps1
 
-# 3. 跑测试（改完必跑，十五套都指向 dist/ 里的当前发布件，合计 930 项断言）
+# 3. 跑测试（改完必跑，十五套都指向 dist/ 里的当前发布件，合计 934 项断言）
 Get-ChildItem tests\*.test.js | ForEach-Object { node $_.FullName }
 
 # 4. 单独语法校验
 node --check dist\chaoxing-helper.user.js
 
-# 5. 发版（先跑发布卫生闸门，再挂 Release 资产）
+# 5. 提交推送（必须先推 main，jsDelivr 读的就是 main 分支的 dist/）
+git add -A
+git commit -m "..."
+git push origin main
+
+# 6. 发版（先跑发布卫生闸门，再挂 Release 资产；Release 是 jsDelivr 的备用通道）
 node tests\release-meta.test.js
 gh release create vX.Y.Z --title "vX.Y.Z" --notes "……" `
     dist\chaoxing-helper.user.js dist\chaoxing-helper.meta.js
 ```
+
+> ⚠️ **顺序不能反**：先推 `main`、再发 Release。反了的话 jsDelivr 上还是旧版，
+> 用户点「检查更新」拿到的是上一版。jsDelivr 本身还有几分钟到几十分钟的缓存延迟。
 
 更多细节见 [docs/开发与构建.md](docs/开发与构建.md) 与 [src/README.md](src/README.md)。
 
@@ -321,6 +340,7 @@ gh release create vX.Y.Z --title "vX.Y.Z" --notes "……" `
 | **v1.11.2-AI** | **2026-11-25** | **面板右栏**（开始/继续、暂停 挪到右侧独立一栏，主按钮大号、次按钮小号）；**日志规范**（统一 `[时间] [标签] 句子`、去开发噪声、合并重复）；**阅读助手**：每段默认 10 秒 + 按每段秒数读到加载不出新内容为止 |
 | **v1.11.3-AI** | **2026-11-25** | **多源免费题库**（icodef 主源 + 百度不挂科 + icodef 备用源，谁先命中用谁）；**答案 → 选项改成打分制**（单选只取最高分那一个、多选取并集、判断题走同义表、否定词防护）；**失败分类**（未收录不再熔断、流控退避重试、只有网络错误才计失败）；每源 2 秒节流 + 命中缓存 |
 | **v1.11.4-AI** | **2026-11-25** | **右栏位置修复**：「开始/继续」「暂停」固定在「任务配置」的右方（v1.11.2 用 `flex-wrap:wrap`，视口窄于约 1082px 时整栏会换行掉到页面最下面 —— 已改 `nowrap`）；**文案收敛**：去掉「（不用 AI 也能答）」「（可选）」「遇到直播/阅读等做不了的任务自动跳过」这类强调式否定 |
+| **v1.11.5-AI** | **2026-11-25** | **删掉上游赞赏码**（任务列表里那张内联 base64 的微信小程序码，是上游作者的打赏码，不该出现在我们的公开版）；**更新通道切到 jsDelivr**（`@updateURL`/`@downloadURL` 改走国内可直连的 CDN，点「检查更新」不再需要梯子；GitHub Releases 继续发版作备用）；发布件体积 715,631 → 545,899 字节 |
 
 > 详细记录见 [CHANGELOG.md](CHANGELOG.md)。
 

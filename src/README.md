@@ -24,7 +24,8 @@ src/baseline/chaoxing-helper.base.js
    │           └─ patch-v1.11.1.ps1 -Mode official ─→ build/chaoxing-helper.v1.11.1.js
    │               └─ patch-v1.11.2.ps1 -Mode official ─→ build/chaoxing-helper.v1.11.2.js
    │                   └─ patch-v1.11.3.ps1 -Mode official ─→ build/chaoxing-helper.user.js
-   │                       └─ patch-v1.11.4.ps1 -Mode official ─→ build/chaoxing-helper.user.js  ─→ dist/chaoxing-helper.user.js
+   │                       └─ patch-v1.11.4.ps1 -Mode official ─→ build/chaoxing-helper.user.js
+   │                           └─ patch-v1.11.5.ps1 -Mode official ─→ build/chaoxing-helper.user.js  ─→ dist/chaoxing-helper.user.js
    │                                                                      ─→ build/chaoxing-helper.meta.js  ─→ dist/chaoxing-helper.meta.js
    └─ patch-v1.9.0.ps1  -Mode debug   ─→ …（同一条链，每步再跑一次）─→ build/chaoxing-helper.debug.user.js
                                                                         build/chaoxing-helper.debug.meta.js
