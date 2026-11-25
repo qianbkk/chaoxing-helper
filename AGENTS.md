@@ -165,7 +165,13 @@ chaoxing-helper/
       调试变体仍然指向本机 `127.0.0.1:8124`（本机自用必须走本机）；
     - **GitHub Releases 照常发版**，作为 jsDelivr 走不通时的备用通道（地址不变）；
     - jsDelivr 有**缓存延迟**（几分钟到几十分钟），发新版后别急着断定「更新没生效」；
-    - **推送顺序**：先推 `main`（jsDelivr 读的是 `main` 分支的 `dist/`），再发 Release。
+    - **推送顺序**：先推 `main`（jsDelivr 读的是 `main` 分支的 `dist/`），再发 Release；
+    - **发版必须清 jsDelivr 缓存**：`node src/tools/purge-cdn.cjs`。
+      jsDelivr 的「文件树」与「文件内容」是两套缓存，不同步 ——
+      实测出现过 `user.js` 已更新、`meta.js` 还是上一版的情况，
+      而**旧 meta.js 会让脚本猫判定「已是最新版本」**，用户点「检查更新」没反应；
+      purge 接口用 **GET**（`PURGE` 方法会拿 Cloudflare 400），
+      校验要打正式地址 `cdn.jsdelivr.net`（各 provider 缓存不同步）。
 
 ## 4. 本机调试通道（维护者自用）
 

@@ -287,14 +287,18 @@ git add -A
 git commit -m "..."
 git push origin main
 
-# 6. 发版（先跑发布卫生闸门，再挂 Release 资产；Release 是 jsDelivr 的备用通道）
+# 6. 清 jsDelivr 缓存（必做：否则 CDN 可能还在发旧文件）
+node src\tools\purge-cdn.cjs
+
+# 7. 发版（先跑发布卫生闸门，再挂 Release 资产；Release 是 jsDelivr 的备用通道）
 node tests\release-meta.test.js
 gh release create vX.Y.Z --title "vX.Y.Z" --notes "……" `
     dist\chaoxing-helper.user.js dist\chaoxing-helper.meta.js
 ```
 
-> ⚠️ **顺序不能反**：先推 `main`、再发 Release。反了的话 jsDelivr 上还是旧版，
-> 用户点「检查更新」拿到的是上一版。jsDelivr 本身还有几分钟到几十分钟的缓存延迟。
+> ⚠️ **顺序不能反**：先推 `main`、再清 jsDelivr 缓存、最后发 Release。
+> 反了的话 jsDelivr 上还是旧版，用户点「检查更新」拿到的是上一版。
+> jsDelivr 本身还有几分钟到几十分钟的缓存延迟，purge 能把它压到秒级。
 
 更多细节见 [docs/开发与构建.md](docs/开发与构建.md) 与 [src/README.md](src/README.md)。
 

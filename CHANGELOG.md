@@ -80,13 +80,40 @@ jsDelivr 读的就是本仓库 `dist/` 里的同一份文件（`dist/` 是提交
 现在每一版都输出到独立的中间产物文件（`chaoxing-helper.v1.11.3.js` 等），
 每次构建都从干净的起点开始；补丁本身也做成了幂等。
 
+### ④ 实测发现：jsDelivr 必须主动清缓存
+
+发这一版时踩到的真问题 —— **jsDelivr 对 GitHub 分支有「文件树」和「文件内容」两套缓存**，
+两者不同步：
+
+| 观测 | 结果 |
+|---|---|
+| 推完 main 后 `data.jsdelivr.com` 的文件树 | 已是新版（`meta.js` 1978 字节） |
+| `cdn.jsdelivr.net` 上的 `meta.js` | **仍是 1.11.4 的旧版**（1990 字节） |
+| `cdn.jsdelivr.net` 上的 `user.js` | purge 后立即是新版 |
+| `fastly.jsdelivr.net` 上的 `meta.js` | 已是新版，Cloudflare 节点还是旧的 |
+| `GET https://purge.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.meta.js` | 返回 `status: finished`，约 3 分钟后刷新 |
+
+**为什么这件事值得单独记**：旧 `meta.js` 会让脚本猫判定「已是最新版本」，
+于是用户点了「检查更新」却**什么都不发生**；而新用户从 jsDelivr 装到的却是新版 ——
+两边版本对不上，还很难自查。
+
+所以新增了 `src/tools/purge-cdn.cjs`，并把「推 main → **清缓存** → 发 Release」
+写成了固定发版流程。
+
+> ⚠️ purge 接口必须用 **GET**，用 `PURGE` 方法会拿到 Cloudflare 的 400。
+> 校验也要打**正式地址** `cdn.jsdelivr.net`，别只测 `fastly.jsdelivr.net` —— 各节点缓存不同步。
+
 ### 怎么验证的
 
 - 十五套测试 **934 项断言全绿**（新增 4 条：赞赏码已移除、发布件无超长内联 base64、
   元数据里不再有 GitHub 下载地址、更新地址指向 jsDelivr）；
 - 发布卫生闸门 **35 项全过**（原 31 项 + 4 条新断言）；
 - `node --check` 两个产物通过；
-- jsDelivr 通道用真实 `curl` 直连实测（meta.js 与 user.js 均 200，字节与本地 `dist/` 一致）。
+- 文档相对链接自检 **116 条全可达、0 缺失**；
+- jsDelivr 通道用真实 `curl` 直连实测：`cdn.jsdelivr.net/gh/…@main/dist/` 上的
+  `meta.js`（1978 字节）与 `user.js`（545,899 字节）**与本地 `dist/` 逐字节一致**（SHA256 相同）；
+- GitHub Release 资产从 `releases/download/v1.11.5/` 下载回来，SHA256 与本地一致；
+  `releases/latest` 已指向 v1.11.5。
 
 ---
 
