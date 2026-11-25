@@ -73,6 +73,13 @@ https://github.com/qianbkk/chaoxing-helper/releases/latest/download/chaoxing-hel
 
 > 必须通过 http(s) 打开才会触发安装；用 `file://` 打开只会被当成纯文本渲染。
 
+> **下载慢？**（2026-11-25 实测）GitHub 直连能连上但只有 13–25 KB/s，实测三轮有两轮 30 秒超时下不完；
+> 走代理稳定在 130–153 KB/s。**挂代理最省事**；不能挂代理就用镜像，把地址前缀换成
+> `https://ghfast.top/` 或 `https://gh-proxy.com/`（实测可用、字节一致），或用
+> `https://cdn.jsdelivr.net/gh/qianbkk/chaoxing-helper@main/dist/chaoxing-helper.user.js`。
+> **注意**：脚本跑起来之后不需要代理 —— 它访问的题库和超星域名国内都能直连。
+> 详细数据与完整镜像地址见 [docs/安装与自动更新.md](docs/安装与自动更新.md) §2。
+
 ### 2.3 首次配置
 
 1. 打开超星课程章节页（`knowledge/cards`），页面会被替换成脚本面板；
