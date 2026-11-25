@@ -35,7 +35,7 @@ function sliceModule(startMark, endMark) {
 
 // =============================================================================
 section('1) 版本与模块标记');
-t('@version 为 1.11.2-AI', src.includes('// @version      1.11.2-AI'), true);
+t('@version 为 1.11.3-AI', src.includes('// @version      1.11.3-AI'), true);
 t('旧的 1.11.1 版本号已不存在', src.includes('// @version      1.11.1-AI'), false);
 t('存在日志规范模块', src.includes('//==================== v1.11.2 日志规范开始 ===================='), true);
 t('存在 v1.11.2 会话日志模块', src.includes('//==================== v1.11.2 运行日志（按标签页会话）开始 ===================='), true);

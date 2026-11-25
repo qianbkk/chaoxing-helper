@@ -6,7 +6,7 @@
 |---|---|
 | `baseline/chaoxing-helper.base.js` | **本仓库的基线**，补丁链的起点（脱敏后的 v1.8.2 发布件） |
 | `patches/patch-vX.Y.Z.ps1` | 增量补丁脚本，每个负责一次版本跃迁 |
-| `modules/*.vX.Y.js` | 整块注入脚本的**独立模块源码**（调试命令、日志、暂停、字体解密……） |
+| `modules/*.vX.Y.js` | 整块注入脚本的**独立模块源码**（调试命令、日志、暂停、字体解密……）。注意：**只有被补丁读进去的那几个是活源码**，其余是历史快照，见下方 §「模块文件：活源码 vs 历史快照」 |
 | `assets/` | 被内联进脚本的第三方资产（Typr/md5、字形映射表） |
 | `tools/` | 构建期工具 + 本机调试通道 |
 | `build.ps1` | 一键重建 |
@@ -22,7 +22,8 @@ src/baseline/chaoxing-helper.base.js
    │   └─ patch-v1.10.0.ps1 -Mode official ─→ build/chaoxing-helper.v1.10.0.js
    │       └─ patch-v1.11.0.ps1 -Mode official ─→ build/chaoxing-helper.v1.11.0.js
    │           └─ patch-v1.11.1.ps1 -Mode official ─→ build/chaoxing-helper.v1.11.1.js
-   │               └─ patch-v1.11.2.ps1 -Mode official ─→ build/chaoxing-helper.user.js  ─→ dist/chaoxing-helper.user.js
+   │               └─ patch-v1.11.2.ps1 -Mode official ─→ build/chaoxing-helper.v1.11.2.js
+   │                   └─ patch-v1.11.3.ps1 -Mode official ─→ build/chaoxing-helper.user.js  ─→ dist/chaoxing-helper.user.js
    │                                                                      ─→ build/chaoxing-helper.meta.js  ─→ dist/chaoxing-helper.meta.js
    └─ patch-v1.9.0.ps1  -Mode debug   ─→ …（同一条链，每步再跑一次）─→ build/chaoxing-helper.debug.user.js
                                                                         build/chaoxing-helper.debug.meta.js
@@ -36,6 +37,46 @@ src/baseline/chaoxing-helper.base.js
 - **正式版** → GitHub Releases 的固定资产名，别人装的就是它；
 - **调试变体** → 本机接收端 `127.0.0.1:8124`，维护者自用，
   能被 AI agent 通过命令通道远程操控（`pause` / `resume` / `status` / `reload` / `goto` / `set` / `dump`）。
+
+## 模块文件：活源码 vs 历史快照
+
+`src/modules/` 里放着 22 个模块文件，但**只有 8 个会进到发布件里**。
+判据只有一条：**补丁脚本有没有用 `Join-Path $root 'src\modules\…'` 把它读进去**。
+
+### 活源码（构建输入，8 个）
+
+| 文件 | 被谁读入 | 内容 |
+|---|---|---|
+| `loghist.v1.10.js` | `patch-v1.10.0.ps1` | 运行日志按标签页会话化 |
+| `autorun.v1.11.js` | `patch-v1.11.0.ps1` | 全程托管模式 |
+| `reading.v1.11.1.js` | `patch-v1.11.1.ps1` | 阅读助手 v1.11.1 |
+| `logging.v1.11.2.js` | `patch-v1.11.2.ps1` | 日志规范（标签集、句式、兜底规范化） |
+| `loghist.v1.11.2.js` | `patch-v1.11.2.ps1` | 会话日志 + 规范化 + 重复合并计数 |
+| `autorun.v1.11.2.js` | `patch-v1.11.2.ps1` | 全程托管模式（只改日志文案） |
+| `reading.v1.11.2.js` | `patch-v1.11.2.ps1` | 阅读助手：默认 10 秒 + 懒加载续读 |
+| `ctbank.v1.11.3.js` | `patch-v1.11.3.ps1` | 多源免费题库：多源并发 + 打分匹配 + 缓存 + 节流 + 失败分类 |
+
+### 历史快照（不参与构建，14 个）
+
+`cxdecrypt.v1.4.js`、`workauto.v1.4.js`、`debuglog.v1.5.js`、`pause.v1.5.js`、
+`layout.v1.6.js`、`layout.v1.8.js`、`debugcmd.v1.7.js`、`debugcmd.v1.8.2.js`、
+`jumptype.v1.8.js`、`panelver.v1.8.js`、`loghist.v1.8.js`、`loghist.v1.8.1.js`、
+`workresult.v1.8.js`、`workresult.v1.8.1.js`
+
+这些文件的内容**早已在基线里**（基线 = 脱敏后的 v1.8.2 发布件），
+或者在补丁链里被后续版本**整段替换**掉了。
+
+> ⚠️ **改历史快照不会影响发布件** —— 改了等于没改。
+> 要改现在的行为：改上表的活源码，或改对应补丁脚本里那段替换文本。
+>
+> 留着的理由：改动过程可审计 —— 想知道某个模块是哪一版引入的、上一版长什么样，
+> 直接看这些快照 + `git log`，比翻聊天记录可靠。
+>
+> 核对方法（结论随时可复现）：
+> ```powershell
+> Select-String -Path src\patches\*.ps1 -Pattern 'src\\modules\\'
+> # 输出 8 处引用，与「活源码」表一一对应
+> ```
 
 ## 基线是什么
 
@@ -58,6 +99,8 @@ src/baseline/chaoxing-helper.base.js
    - 元数据里的 `@version` 一并改掉。
 2. **如果是新模块**：把代码写到 `src/modules/xxx.vX.Y.js`，
    在补丁里用区间替换把它整段注入脚本；模块里不要带版本号字样以外的状态。
+   新建的文件就是**活源码**（补丁会读它）；**同一模块的旧版本文件不要删** ——
+   留作历史快照，方便审计「这个模块是哪一版改的」。
 3. **更新构建脚本** `src/build.ps1`：把新补丁挂进链条。
 4. **更新测试**：`tests/` 里的断言跟着改（版本号、产物路径、新增行为）。
 5. **重建 + 全测**：

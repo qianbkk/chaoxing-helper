@@ -21,6 +21,8 @@ function sliceBetween(startMark, endMark) {
 }
 const cxMod = sliceBetween('//==================== v1.4 超星加密字体解密', '//==================== 字体解密模块结束');
 const workMod = sliceBetween('//==================== v1.4 章节测验 / 作业自动作答', '//==================== v1.3 附加模块开始');
+// v1.11.3：作业端的答案匹配改成打分制，实现落在「多源免费题库」模块里
+const ctBankMod = sliceBetween('//==================== v1.11.3 多源免费题库开始 ====================', '//==================== v1.11.3 多源免费题库结束 ====================');
 
 // ---------------- 极简 fake DOM ----------------
 function matchSimple(el, sel) {
@@ -165,8 +167,8 @@ const sandbox = {
 const factory = new Function(
     'GM_getValue', 'GM_setValue', 'GM_xmlhttpRequest', 'unsafeWindow', 'document',
     '_d', '_w', '_l', 'aiLog', 'aiAsk', 'ctUrl', 'token',
-    cxMod + '\n' + workMod + `
-    return { cxDecrypt: cxDecrypt, workAuto: workAuto, Typr: Typr, md5: md5, tableB64: CX_FONT_TABLE_B64 };`
+    cxMod + '\n' + ctBankMod + '\n' + workMod + `
+    return { cxDecrypt: cxDecrypt, workAuto: workAuto, ctBank: ctBank, Typr: Typr, md5: md5, tableB64: CX_FONT_TABLE_B64 };`
 );
 const M = factory(
     sandbox.GM_getValue, sandbox.GM_setValue, sandbox.GM_xmlhttpRequest, sandbox.unsafeWindow, sandbox.document,
@@ -224,17 +226,20 @@ if (list.length) {
     t('选项字母=原始字母(乱序)', q.options.map(o => o.letter).join(''), 'CBDA');
 }
 
-console.log('\n=== 5) 题库答案匹配（按文字，兼容选项乱序）===');
+console.log('\n=== 5) 题库答案匹配（按文字打分，兼容选项乱序）===');
 const opts = list.length ? list[0].options : [];
 t('文字精确匹配', WA.matchOne('打虎', opts), 1);
 t('文字带引号匹配', WA.matchOne('“拍蝇”', opts), 2);
 t('包含匹配', WA.matchOne('天网行动', opts), 3);
 t('不匹配返回 -1', WA.matchOne('完全不存在的选项', opts), -1);
 t('字母回退按原始字母', WA.matchOne('C', opts), 0); // 原始字母 C = 猎狐
-t('多选 # 分隔', WA.matchAnswer('“猎狐”#“拍蝇”', opts), [0, 2]);
-t('多选 混合写法', WA.matchAnswer('打虎#天网行动', opts), [1, 3]);
-t('空答案', WA.matchAnswer('', opts), []);
-t('无匹配答案', WA.matchAnswer('不存在#也不存在', opts), []);
+t('多选 # 分隔', WA.matchAnswer('“猎狐”#“拍蝇”', opts, '多选题'), [0, 2]);
+t('多选 混合写法', WA.matchAnswer('打虎#天网行动', opts, '多选题'), [1, 3]);
+t('空答案', WA.matchAnswer('', opts, '多选题'), []);
+t('无匹配答案', WA.matchAnswer('不存在#也不存在', opts, '多选题'), []);
+t('单选只取最高分那一个', WA.matchAnswer('“猎狐”#“拍蝇”', opts, '单选题'), [0]);
+t('单选一句话提到多个选项时也只取一个', WA.matchAnswer('“猎狐”或“拍蝇”', opts, '单选题'), [0]);
+t('多选按 # 拆开后取并集', WA.matchAnswer('打虎#“拍蝇”', opts, '多选题'), [1, 2]);
 
 console.log('\n=== 6) 勾选选项 ===');
 if (list.length) {

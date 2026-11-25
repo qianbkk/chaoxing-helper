@@ -13,6 +13,12 @@ const e = src.indexOf('//==================== AI 答题模块结束');
 if (s < 0 || e < 0) throw new Error('未找到模块标记');
 const mod = src.slice(s, e);
 
+// v1.11.3：考试端的查题与答案匹配都走「多源免费题库」模块
+const cbS = src.indexOf('//==================== v1.11.3 多源免费题库开始 ====================');
+const cbE = src.indexOf('//==================== v1.11.3 多源免费题库结束 ====================');
+if (cbS < 0 || cbE < 0) throw new Error('未找到题库模块标记');
+const ctBankMod = src.slice(cbS, cbE);
+
 // ---------------- 极简 fake DOM（支持 tag/.class/#id/[attr] / [attr=v] / [attr^=v] 与后代链） ----------------
 function matchSimple(el, sel) {
   sel = String(sel || '').trim();
@@ -135,10 +141,11 @@ const fakeWin = { document: doc, top: fakeTop, location: { href: '', pathname: '
 
 let stored = {};
 let lastReq = null;
+const reqs = [];
 const sandbox = {
   GM_getValue: (k, d) => (k in stored ? stored[k] : d),
   GM_setValue: (k, v) => { stored[k] = v; },
-  GM_xmlhttpRequest: (opt) => { lastReq = opt; },
+  GM_xmlhttpRequest: (opt) => { reqs.push(opt); lastReq = opt; },
   unsafeWindow: fakeWin,
   document: doc
 };
@@ -148,8 +155,8 @@ const factory = new Function(
   '_d', '_w', 'aiEnable', 'aiBaseUrl', 'aiModel', 'aiKey', 'aiTimeout',
   'ctFailLimit', 'ctFailCooldown', 'ctFallbackEnable', 'questionNum',
   'randomDo', 'accuracy', 'ctUrl', 'token',
-  mod + `
-  return { extras, parseAnswerIndex, aiState };`
+  ctBankMod + '\n' + mod + `
+  return { extras, parseAnswerIndex, aiState, ctBank };`
 );
 const M = factory(
   sandbox.GM_getValue, sandbox.GM_setValue, sandbox.GM_xmlhttpRequest, sandbox.unsafeWindow, sandbox.document,
@@ -243,17 +250,48 @@ t('onpaste 属性被移除', inp.getAttribute('onpaste'), null);
 t('readonly 被移除', inp.getAttribute('readonly'), null);
 t('user-select 恢复为 text', inp.style.userSelect, 'text');
 
-console.log('\n=== 9) ctAsk：题库接口返回解析 ===');
+console.log('\n=== 9) ctAsk：多源免费题库（v1.11.3）===');
+// 测试里不等节流、不吃缓存，方便断言请求本身
+M.ctBank.MIN_INTERVAL = 0;
+M.ctBank.cacheClear();
+function flushReqs(payload) {
+    let guard = 0;
+    while (guard++ < 20) {
+        const pend = reqs.filter(r => !r.__flushed);
+        if (!pend.length) break;
+        pend.forEach(r => { r.__flushed = true; try { if (r.onload) r.onload(payload); } catch (e) { } });
+    }
+}
 let cbResult = 'NOTCALLED';
+reqs.length = 0;
 X.ctAsk('人民代表大会制度', '单选题', (v) => { cbResult = v; });
-t('请求指向 icodef', lastReq.url, 'https://cx.icodef.com/wyn-nb?v=4');
-t('请求带 type=0', /type=0/.test(lastReq.data), true);
-lastReq.onload({ responseText: JSON.stringify({ code: 1, data: '人民代表大会制度' }) });
-t('code=1 返回答案文字', cbResult, '人民代表大会制度');
+const icodefReq = reqs.find(r => String(r.url).indexOf('icodef') >= 0);
+const baiduReq = reqs.find(r => String(r.url).indexOf('easylearn') >= 0);
+t('主源里有 icodef', !!icodefReq, true);
+t('icodef 指向 cx.icodef.com', icodefReq && icodefReq.url, 'https://cx.icodef.com/wyn-nb?v=4');
+t('icodef 请求带 type=0', icodefReq && /type=0/.test(icodefReq.data), true);
+t('主源里有百度不挂科（零密钥）', !!baiduReq, true);
+t('百度请求是 GET', baiduReq && baiduReq.method, 'GET');
+t('百度请求带题干', baiduReq && /query=/.test(baiduReq.url), true);
+t('主源命中即回调答案', (icodefReq.onload({ responseText: JSON.stringify({ code: 1, data: '人民代表大会制度' }) }), cbResult), '人民代表大会制度');
+
+console.log('\n=== 9b) 全部未收录 → 不给答案（交给 AI）===');
 cbResult = 'NOTCALLED';
-X.ctAsk('未收录', '单选题', (v) => { cbResult = v; });
-lastReq.onload({ responseText: JSON.stringify({ code: -1, data: '未搜索到答案' }) });
-t('code=-1 返回 null', cbResult, null);
+reqs.length = 0;
+M.ctBank.cacheClear();
+X.ctAsk('题库里没有的题', '单选题', (v) => { cbResult = v; });
+flushReqs({ responseText: JSON.stringify({ code: -1, data: '未搜索到答案' }) });
+t('全部源未收录返回 null', cbResult, null);
+
+console.log('\n=== 9c) 流控(-2) 会退避重试，不直接放弃===');
+cbResult = 'NOTCALLED';
+reqs.length = 0;
+M.ctBank.cacheClear();
+X.ctAsk('被限流的题', '单选题', (v) => { cbResult = v; });
+const icodef2 = reqs.find(r => String(r.url).indexOf('icodef') >= 0);
+t('icodef 主源已发出', !!icodef2, true);
+t('流控先不算失败（退避重试中）', cbResult, 'NOTCALLED');
+t('未收录不计入熔断计数', M.ctBank._failStreak, 0);
 
 console.log('\n=== 10) 默认开关状态（未开启即不生效） ===');
 t('复制粘贴默认关闭', X.cfg.paste, false);

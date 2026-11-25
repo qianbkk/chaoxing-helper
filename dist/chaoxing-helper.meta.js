@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name          超星学习通小助手（AI 版）
 // @namespace    unrival
-// @version      1.11.2-AI
-// @description  超星学习通小助手（AI 版）：自动刷视频与文档、自动做章节测验/作业。章节测验先用题库作答，查不到或被限流时自动降级到 AI（OpenAI 兼容接口）；超星的加密字体自动解密，题干与选项都能正常识别。题库 Token、正确率门槛、翻章模式、AI 接口地址与密钥都可在面板配置。
+// @version      1.11.3-AI
+// @description  超星学习通小助手（AI 版）：自动刷视频与文档、自动做章节测验/作业。章节测验先用免费题库作答（多源并发 + 打分匹配），查不到时才自动降级到 AI（OpenAI 兼容接口）；超星的加密字体自动解密，题干与选项都能正常识别。题库 Token、正确率门槛、翻章模式、AI 接口地址与密钥都可在面板配置。
 // @author       qianbkk
 // @run-at       document-end
 // @storageName  unrivalxxt
@@ -27,6 +27,8 @@
 // @connect      passport2-api.chaoxing.com
 
 // @connect      cx.icodef.com
+// @connect      q.icodef.com
+// @connect      easylearn.baidu.com
 // @connect      *
 // @license      GPL-3.0-or-later
 // @homepageURL  https://github.com/qianbkk/chaoxing-helper

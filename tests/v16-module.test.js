@@ -53,7 +53,7 @@ t('跳过文案只在托管分支出现一次', (src.match(/'已跳过（'/g) ||
 console.log('\n=== 3) 面板标题 / 元数据 / 说明精简 ===');
 t('@name 改为超星学习通小助手（AI 版）', src.includes('// @name          超星学习通小助手（AI 版）'), true);
 t('@author 标注 qianbkk', src.includes('// @author       qianbkk'), true);
-t('@version 为 1.11.2-AI', src.includes('// @version      1.11.2-AI'), true);
+t('@version 为 1.11.3-AI', src.includes('// @version      1.11.3-AI'), true);
 t('旧的 v1.0 标题已移除', src.includes('学习通小助手v1.0(不能答题填token)'), false);
 t('页面标题不再写死版本号（v1.8 改为运行时动态填）', src.includes('<title>超星学习通小助手（AI 版）</title>'), true);
 t('大标题带 id=unrivalTitle（布局模块靠它定位面板）', src.includes('id="unrivalTitle"'), true);

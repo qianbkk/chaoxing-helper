@@ -35,7 +35,7 @@ function sliceModule(startMark, endMark) {
 section('1) 结构断言');
 t('存在阅读助手模块起始标记', src.includes('//==================== v1.11.2 阅读助手开始 ===================='), true);
 t('存在阅读助手模块结束标记', src.includes('//==================== v1.11.2 阅读助手结束 ===================='), true);
-t('@version 为 1.11.2-AI', src.includes('// @version      1.11.2-AI'), true);
+t('@version 为 1.11.3-AI', src.includes('// @version      1.11.3-AI'), true);
 t('旧的 1.11.0 版本号已不存在', src.includes('// @version      1.11.0-AI'), false);
 t('默认关闭', src.includes("GM_getValue(this.KEY, '0') == '1'"), true);
 t('存储键为 unrivalReadAssist', src.includes("KEY: 'unrivalReadAssist'"), true);
