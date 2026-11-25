@@ -42,8 +42,8 @@ t('能定位到面板 HTML', !!pm, true);
 const panelHtml = pm ? pm[1] : '';
 const order = [
     ['任务配置', '<div class="panel-heading">任务配置</div>'],
-    ['题库设置', '<div class="panel-heading">答题设置 · 题库（不用 AI 也能答）</div>'],
-    ['AI 设置', '<div class="panel-heading">答题设置 · AI 接口（可选）</div>'],
+    ['题库设置', '<div class="panel-heading">答题设置 · 题库</div>'],
+    ['AI 设置', '<div class="panel-heading">答题设置 · AI 接口</div>'],
     ['章节测验自动作答', '<div class="panel-heading">章节测验 / 作业自动作答</div>'],
     ['运行日志', '<div class="panel-heading">运行日志</div>'],
     ['任务列表', '<div class="panel-heading">任务列表</div>'],

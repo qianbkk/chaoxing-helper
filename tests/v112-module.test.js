@@ -35,7 +35,7 @@ function sliceModule(startMark, endMark) {
 
 // =============================================================================
 section('1) 版本与模块标记');
-t('@version 为 1.11.3-AI', src.includes('// @version      1.11.3-AI'), true);
+t('@version 为 1.11.4-AI', src.includes('// @version      1.11.4-AI'), true);
 t('旧的 1.11.1 版本号已不存在', src.includes('// @version      1.11.1-AI'), false);
 t('存在日志规范模块', src.includes('//==================== v1.11.2 日志规范开始 ===================='), true);
 t('存在 v1.11.2 会话日志模块', src.includes('//==================== v1.11.2 运行日志（按标签页会话）开始 ===================='), true);
@@ -53,6 +53,8 @@ t('左栏 .unrival-maincol', src.includes('.unrival-maincol {'), true);
 t('右栏 .unrival-sidecol', src.includes('.unrival-sidecol {'), true);
 t('右栏桌面端吸顶', src.includes('position:sticky'), true);
 t('窄屏时右栏顶到最上面', src.includes('.unrival-sidecol { order:-1;'), true);
+t('桌面端两栏不换行（右栏不会被挤到页面最下面）', src.includes('.unrival-mainrow { display:flex; flex-wrap:nowrap;'), true);
+t('旧的换行版栅格已不存在', src.includes('.unrival-mainrow { display:flex; flex-wrap:wrap;'), false);
 t('右栏有独立的运行控制面板', src.includes('id="runCtlPanel"'), true);
 t('运行控制面板用醒目标题栏', src.includes('class="panel panel-primary" id="runCtlPanel"'), true);
 

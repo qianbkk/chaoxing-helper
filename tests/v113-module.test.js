@@ -82,8 +82,8 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // =============================================================================
 section('1) 发布件元数据与模块标记');
-t('@version 为 1.11.3-AI', src.includes('// @version      1.11.3-AI'), true);
-t('旧的 1.11.2 版本号已不存在', src.includes('// @version      1.11.2-AI'), false);
+t('@version 为 1.11.4-AI', src.includes('// @version      1.11.4-AI'), true);
+t('旧的 1.11.3 版本号已不存在', src.includes('// @version      1.11.3-AI'), false);
 t('存在多源题库模块', src.includes('//==================== v1.11.3 多源免费题库开始 ===================='), true);
 t('@connect 里有 icodef 主源', src.includes('// @connect      cx.icodef.com'), true);
 t('@connect 里有 icodef 备用源', src.includes('// @connect      q.icodef.com'), true);
@@ -314,7 +314,8 @@ section('6) 多源客户端：主源并行 / 命中 / 未收录 / 网络错误')
     t('作业端匹配带上了题型', src.includes('self.matchAnswer(ans, q.options, q.type)'), true);
     t('考试端匹配带上了题型', src.includes('self.matchAnswerText(text, q.options, q.type)'), true);
     t('面板说明了三个免费源', src.includes('三个免费源同时查'), true);
-    t('面板说明了 token 选填', src.includes('实测不填也能查题'), true);
+    t('面板说明了 token 选填', src.includes('题库 Token（选填）'), true);
+    t('面板不再强调「不填也能查题」（v1.11.4 起文案收敛）', src.includes('实测不填也能查题'), false);
 
     console.log('\n========================================');
     console.log(`结果：${pass} 通过，${fail} 失败`);

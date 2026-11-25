@@ -34,7 +34,7 @@ chaoxing-helper/
 │   ├── chaoxing-helper.meta.js   ← 只有 ==UserScript== 元数据块
 │   └── README.md
 ├── build/                 ← 中间产物 + 调试变体（gitignore，可随时删）
-├── tests/                 ← 十五套测试，改完必跑（共 927 项断言）
+├── tests/                 ← 十五套测试，改完必跑（共 930 项断言）
 ├── logs/                  ← 本机调试日志（gitignore）
 └── docs/                  ← 结论与取证，入口是 docs/INDEX.md
     ├── INDEX.md                    ← 文档索引（按角色给出阅读顺序）
@@ -109,6 +109,10 @@ chaoxing-helper/
     - **右栏（`.unrival-sidecol`）= 运行控制**：独立面板（`#runCtlPanel`，蓝色标题栏），
       只放「开始/继续」（绿色 **大号**主按钮 `btn-lg btn-block`）与「暂停」（红色 **小号** `btn-sm btn-block`）。
       桌面端 sticky，窄屏 `order:-1` 顶到最上面；
+    - **v1.11.4 起：桌面端两栏不许换行**（`.unrival-mainrow { flex-wrap:nowrap; }`）。
+      v1.11.2 用的是 `wrap`，两栏基准宽合计 902px，视口窄于约 1082px 时右栏会整块
+      换行掉到页面最下面（用户反馈「开始按钮跑到最下面了」）——
+      **改面板栅格时不要再引入换行**，否则右栏位置又跑掉；
     - 调试相关的东西永远在最下面；运行日志和任务列表是主要部分，不塞到末尾；
     - 题库与 AI 的设置必须**分成两块、各存各的**（`saveCtButton` / `saveAiButton`），
       别再合并成一个「保存AI设置」；

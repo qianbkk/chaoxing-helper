@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          超星学习通小助手（AI 版）
 // @namespace    unrival
-// @version      1.11.3-AI
+// @version      1.11.4-AI
 // @description  超星学习通小助手（AI 版）：自动刷视频与文档、自动做章节测验/作业。章节测验先用免费题库作答（多源并发 + 打分匹配），查不到时才自动降级到 AI（OpenAI 兼容接口）；超星的加密字体自动解密，题干与选项都能正常识别。题库 Token、正确率门槛、翻章模式、AI 接口地址与密钥都可在面板配置。
 // @author       qianbkk
 // @run-at       document-end
@@ -3826,12 +3826,15 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
             .unrival-field { margin-bottom:8px; }
             .unrival-field > span { display:block; font-size:12px; color:#888; margin-bottom:3px; }
             .unrival-field input, .unrival-field select { width:100%; box-sizing:border-box; }
-            /* v1.11.2：左右两栏 —— 左边配置区，右边运行控制 */
-            .unrival-mainrow { display:flex; flex-wrap:wrap; align-items:flex-start; margin:0 -8px; }
-            .unrival-maincol { flex:1 1 620px; min-width:0; margin:0 8px; }
+            /* v1.11.4：左右两栏 —— 左边配置区，右边运行控制（紧挨「任务配置」的右方） */
+            /* v1.11.2 用的是 flex-wrap:wrap：两栏基准宽合计 902px，视口窄于约 1082px 时 */
+            /* 右栏会整块换行掉到页面最下面。桌面端改成 nowrap，右栏位置就固定住了。 */
+            .unrival-mainrow { display:flex; flex-wrap:nowrap; align-items:flex-start; margin:0 -8px; }
+            .unrival-maincol { flex:1 1 520px; min-width:0; margin:0 8px; }
             .unrival-sidecol { flex:0 0 250px; margin:0 8px; position:sticky; top:12px; }
             @media (max-width: 991px) {
                 /* 窄屏：运行控制顶到最上面，主操作不用往下滚 */
+                .unrival-mainrow { flex-wrap:wrap; }
                 .unrival-sidecol { order:-1; flex:1 1 100%; position:static; margin-bottom:12px; }
             }
         </style>
@@ -3877,20 +3880,20 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                 <div class="unrival-row">
                                     <div class="unrival-label">托管模式：</div>
                                     <div class="unrival-ctl">
-                                        <label><input type="checkbox" id="unrivalAutoRun"> 全程托管：遇到直播/阅读等做不了的任务自动跳过，一路推进到最后一节</label>
+                                        <label><input type="checkbox" id="unrivalAutoRun"> 全程托管：自动跳过无法处理的任务，一路推进到最后一节</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="unrival-grid">
                             <div class="panel panel-info" id="ctPanel">
-                                <div class="panel-heading">答题设置 · 题库（不用 AI 也能答）</div>
+                                <div class="panel-heading">答题设置 · 题库</div>
                                 <div class="panel-body">
                                     <div style="font-size:12px;color:#888;margin-bottom:8px;">
-                                        三个免费源同时查（icodef、百度不挂科、icodef 备用源）；按选项文字打分匹配，单选只取最像的那一个；查不到才转 AI。
+                                        三个免费源同时查，按选项文字相似度匹配；查不到才转 AI。
                                     </div>
                                     <div class="unrival-field">
-                                        <span>题库 Token（选填：实测不填也能查题，填了能提高并发）</span>
+                                        <span>题库 Token（选填）</span>
                                         <input type="password" id="unrivalCtToken" placeholder="选填">
                                     </div>
                                     <div class="unrival-field">
@@ -3911,7 +3914,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                 </div>
                             </div>
                             <div class="panel panel-info" id="aiPanel">
-                                <div class="panel-heading">答题设置 · AI 接口（可选）</div>
+                                <div class="panel-heading">答题设置 · AI 接口</div>
                                 <div class="panel-body">
                                     <div class="unrival-field">
                                         <span>Base URL（接口根地址，不带 /chat/completions）</span>
@@ -4028,7 +4031,7 @@ Typr.U={shape:function(t,e,r){for(var s=function(t,e,r,s){var n=e[r],a=e[r+1],h=
                                     当前状态：<span id="pauseStatusText">运行中</span>
                                 </div>
                                 <div style="margin-top:10px;font-size:12px;color:#999;line-height:1.8;">
-                                    「开始/继续」恢复自动翻章与自动作答；「暂停」立即挂起所有自动操作。
+                                    「开始/继续」恢复自动运行，「暂停」立即挂起。
                                 </div>
                             </div>
                         </div>

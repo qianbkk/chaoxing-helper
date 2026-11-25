@@ -30,7 +30,7 @@ const src = fs.readFileSync(file, 'utf8');
 
 // =============================================================================
 console.log('\n=== 1) 产出脚本的结构断言 ===');
-t('@version 为 1.11.3-AI', src.includes('// @version      1.11.3-AI'), true);
+t('@version 为 1.11.4-AI', src.includes('// @version      1.11.4-AI'), true);
 t('存在调试模块起始标记', src.includes('//==================== v1.5 调试日志模块开始 ===================='), true);
 t('存在调试模块结束标记', src.includes('//==================== v1.5 调试日志模块结束 ===================='), true);
 t('元数据含 @connect *（本机接收端无需额外授权）', src.includes('// @connect      *'), true);
