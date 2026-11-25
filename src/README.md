@@ -139,3 +139,5 @@ src/baseline/chaoxing-helper.base.js
 | `tools/serve-dist.cjs` | 本机发布件服务：安装/更新用，动态提供任意历史版本名的别名 |
 | `tools/serve-dist.ps1` | 启动上面的服务（包装脚本） |
 | `tools/log-sink.cjs` | 本机调试通道：日志落盘 + 远程操控 + 版本自检 + 提供 `/latest.*` |
+| `tools/check-links.cjs` | 自检：扫描全部 `.md` 的相对链接，报告失效链接（退出码 1 = 有缺失） |
+| `tools/probe-baidu.cjs` | 探针：实测「百度不挂科」题库接口 + XOR 解密 + 相似度（调研留档，发布件不依赖） |

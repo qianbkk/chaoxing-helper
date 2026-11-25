@@ -279,6 +279,9 @@ Get-ChildItem tests\*.test.js | ForEach-Object { node $_.FullName }
 # 4. 单独语法校验
 node --check dist\chaoxing-helper.user.js
 
+# 4b. 文档链接自检
+node src\tools\check-links.cjs
+
 # 5. 提交推送（必须先推 main，jsDelivr 读的就是 main 分支的 dist/）
 git add -A
 git commit -m "..."
